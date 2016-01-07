@@ -99,7 +99,7 @@ module Fleck
         else
           color = "#00BCD4"
         end
-        "[#{datetime.strftime('%F %T.%L')}]".color(:cyan) + (progname ? " (#{progname})".color(:yellow) : "") + " #{severity} ".color(color) + "#{msg}\n"
+        "[#{datetime.strftime('%F %T.%L')}]".color(:cyan) + (progname ? " #{progname}".color(:yellow) : "") + " #{severity} ".color(color) + "#{msg}\n"
       end
 
       return @formatter

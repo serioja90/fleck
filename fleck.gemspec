@@ -5,6 +5,7 @@ require 'fleck/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "fleck"
+  spec.platform      = "ruby"
   spec.version       = Fleck::VERSION
   spec.authors       = ["Groza Sergiu"]
   spec.email         = ["serioja90@gmail.com"]
@@ -25,7 +26,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3"
-  spec.add_dependency             "celluloid", "~> 0.16.0"
-  spec.add_dependency             "bunny", "~> 2.2"
   spec.add_dependency             "rainbow", "~> 2.0"
+  spec.add_dependency             "bunny", "~> 2.2"
 end

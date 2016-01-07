@@ -15,8 +15,8 @@ module Fleck
           # disable tracing when we reach the end of the subclass
           trace.disable
           # create a new instance of the subclass, in order to start the consumer
-          (subclass.configs[:threads] || 1).times do
-            subclass.new
+          [subclass.configs[:concurrency].to_i, 1].max.times do |i|
+            subclass.new(i)
           end
         end
       end 
@@ -35,28 +35,34 @@ module Fleck
       subclass.configs = Fleck.config.default_options
     end
 
-    def initialize
-      logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
+    def initialize(thread_id)
+      @thread_id    = thread_id
+      @delivery_tag = nil
+
       @host       = configs[:host]
       @port       = configs[:port]
       @user       = configs[:user]     || 'guest'
       @pass       = configs[:password] || configs[:pass]
       @vhost      = configs[:vhost]    || "/"
-      @queue_name = configs[:queue] 
+      @queue_name = configs[:queue]
 
+      logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
       logger.info "Connecting to #{@host}:#{@port}#{@vhost} as #{@user}"
       @connection = Bunny.new(host: @host, port: @port, user: @user, pass: @pass, vhost: @vhost)
       @connection.start
 
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
       @channel = @connection.create_channel
+      @channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
       @queue   = @channel.queue(@queue_name, auto_delete: false)
 
       logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
       consumer = self
-      Celluloid::Future.new do
-        @queue.subscribe do |delivery_info, metadata, payload|
+      @thread = Thread.new do
+        @subscription = @queue.subscribe(manual_ack: true, block: true) do |delivery_info, metadata, payload|
+          @delivery_tag = delivery_info.delivery_tag
           on_message(delivery_info, metadata, payload)
+          @channel.ack(@delivery_tag)
         end
       end
     end
@@ -68,8 +74,18 @@ module Fleck
                   "supress this message."
     end
 
+    def terminate
+      @channel.ack(@delivery_tag)
+      @channel.close
+      @thread.kill
+    end
+
     def logger
-      @logger ||= self.class.logger
+      return @logger if @logger
+      @logger = self.class.logger.clone
+      @logger.progname = "#{self.class.name}[#{@thread_id}]"
+
+      @logger
     end
 
     def configs
