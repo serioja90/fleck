@@ -2,7 +2,7 @@
 module Fleck
   class Consumer
     class << self
-      attr_accessor :logger, :configs
+      attr_accessor :logger, :configs, :consumers
     end
 
     def self.inherited(subclass)
@@ -16,7 +16,7 @@ module Fleck
           trace.disable
           # create a new instance of the subclass, in order to start the consumer
           [subclass.configs[:concurrency].to_i, 1].max.times do |i|
-            subclass.new(i)
+            subclass.consumers << subclass.new(i)
           end
         end
       end 
@@ -29,10 +29,13 @@ module Fleck
     end
 
     def self.init_consumer(subclass)
-      subclass.logger = Fleck.logger.clone
+      subclass.logger          = Fleck.logger.clone
       subclass.logger.progname = subclass.to_s
+
       subclass.logger.debug "Setting defaults for #{subclass.to_s.color(:yellow)} consumer"
-      subclass.configs = Fleck.config.default_options
+
+      subclass.configs   = Fleck.config.default_options
+      subclass.consumers = []
     end
 
     def initialize(thread_id)
@@ -65,19 +68,20 @@ module Fleck
           @channel.ack(@delivery_tag)
         end
       end
+      @thread.abort_on_exception = true
+
+      at_exit do
+        terminate
+      end
     end
 
     def on_message(delivery_info, metadata, payload)
-      logger.warn "Message received: #{payload}. The message is going to be lost. " +
-                  "Please, overwrite the " + "#on_message(delivery_info, metadata, payload) ".color(:green) +
-                  "method, if you want to process this message, or simply leave the method empty to " +
-                  "supress this message."
+      raise NotImplementedError.new("(#{self.class}) You must implement #on_message(delivery_info, metadata, payload) method.")
     end
 
     def terminate
-      @channel.ack(@delivery_tag)
-      @channel.close
-      @thread.kill
+      @channel.close unless @channel.closed?
+      logger.info "Consumer successfully terminated."
     end
 
     def logger
