@@ -9,6 +9,7 @@ module Fleck
       super
       init_consumer(subclass)
       autostart(subclass)
+      Fleck.register_consumer(subclass)
     end
 
     def self.configure(opts = {})
@@ -89,14 +90,7 @@ module Fleck
     protected
 
     def connect!
-      if @connection && !@connection.closed?
-        logger.info("Closing the opened connection...")
-        @connection.close
-      end
-
-      logger.info "Connecting to #{@host}:#{@port}#{@vhost} as #{@user}"
-      @connection = Bunny.new(host: @host, port: @port, user: @user, pass: @pass, vhost: @vhost)
-      @connection.start
+      @connection = Fleck.connection(host: @host, port: @port, user: @user, pass: @pass, vhost: @vhost)
     end
 
     def create_channel!
@@ -106,26 +100,22 @@ module Fleck
       end
 
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
-      @channel = @connection.create_channel
+      @channel  = @connection.create_channel
       @channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
-      @queue   = @channel.queue(@queue_name, auto_delete: false)
+      @queue    = @channel.queue(@queue_name, auto_delete: false)
+      @exchange = @channel.default_exchange
     end
 
     def subscribe!
       logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
       @subscription = @queue.subscribe(manual_ack: true) do |delivery_info, metadata, payload|
-        begin
-          on_message(delivery_info, metadata, payload)
-          @channel.ack(delivery_info.delivery_tag) unless @channel.closed?
-        rescue StandardError, NotImplementedError => e
-          logger.error e.inspect + "\n" + e.backtrace.join("\n")
-          restart!
-        end
+        result = on_message(payload)
+        @exchange.publish(result.to_s, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+        @channel.ack(delivery_info.delivery_tag) unless @channel.closed?
       end
     end
 
     def restart!
-      connect!
       create_channel!
       subscribe!
     end
