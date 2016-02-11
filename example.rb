@@ -12,30 +12,24 @@ Fleck.configure do |config|
   config.loglevel     = Logger::DEBUG
 end
 
-conn = Bunny.new(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-conn.start
-ch = conn.create_channel
-x  = ch.default_exchange
-reply_queue = ch.queue("", exclusive: true)
-reply_to = reply_queue.name
-SAMPLES.times do |i|
-  x.publish(i.to_s, routing_key: "example.queue", reply_to: reply_to, correlation_id: i)
-end
-
-puts "Starting queue consumption"
+connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
+client = Fleck::Client.new(connection, "example.queue")
 
 count = 0
 mutex = Mutex.new
 
-reply_queue.subscribe do |delivery_info, metadata, payload|
-  puts payload
-  mutex.synchronize { count += 1 }
+Thread.new do
+  SAMPLES.times do |i|
+    response = client.request(i)
+    puts response.body
+    mutex.synchronize { count += 1 }
+  end
 end
 
 class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i
 
-  def on_message(payload)
+  def on_message(headers, payload)
     return "#{payload.to_i + 1}. Hello, World!"
   end
 end

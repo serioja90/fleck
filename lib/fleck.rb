@@ -3,9 +3,13 @@ require "rainbow"
 require "rainbow/ext/string"
 require "bunny"
 require "thread_safe"
+require "securerandom"
+require "oj"
 require "fleck/version"
 require "fleck/configuration"
+require "fleck/loggable"
 require "fleck/consumer"
+require "fleck/client"
 
 module Fleck
   @config      = Configuration.new

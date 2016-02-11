@@ -109,8 +109,15 @@ module Fleck
     def subscribe!
       logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
       @subscription = @queue.subscribe(manual_ack: true) do |delivery_info, metadata, payload|
-        result = on_message(payload)
-        @exchange.publish(result.to_s, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+        data     = Oj.load(payload)
+        result   = on_message(data[:headers], data[:body])
+        response = Oj.dump({status: 200, body: result})
+        logger.debug "Sending response: #{response}"
+        @exchange.publish(
+          response,
+          routing_key:    metadata.reply_to,
+          correlation_id: metadata.correlation_id
+        )
         @channel.ack(delivery_info.delivery_tag) unless @channel.closed?
       end
     end
