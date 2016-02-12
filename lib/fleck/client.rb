@@ -17,15 +17,17 @@ module Fleck
         if request
           request.response = Fleck::Client::Response.new(payload)
           request.complete!
+          @requests.delete metadata[:correlation_id]
         end
       end
-      logger.info("Client initialized!")
+
+      logger.debug("Client initialized!")
     end
 
-    def request(payload)
-      request = Fleck::Client::Request.new(@exchange, @queue_name, @reply_queue.name, payload)
+    def request(payload, async = false, &block)
+      request = Fleck::Client::Request.new(@exchange, @queue_name, @reply_queue.name, payload, &block)
       @requests[request.id] = request
-      request.send!
+      request.send!(async)
 
       return request.response
     end

@@ -9,7 +9,7 @@ SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
 Fleck.configure do |config|
   config.default_user = user
   config.default_pass = pass
-  config.loglevel     = Logger::DEBUG
+  config.loglevel     = Logger::INFO
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
@@ -20,9 +20,10 @@ mutex = Mutex.new
 
 Thread.new do
   SAMPLES.times do |i|
-    response = client.request(i)
-    puts response.body
-    mutex.synchronize { count += 1 }
+    client.request(i, true) do |request, response|
+      puts response.body
+      mutex.synchronize { count += 1 }
+    end
   end
 end
 
