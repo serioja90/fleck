@@ -17,12 +17,17 @@ client = Fleck::Client.new(connection, "example.queue")
 
 count = 0
 mutex = Mutex.new
+lock  = Mutex.new
+condition = ConditionVariable.new
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request({"num" => i}, true) do |request, response|
+    client.request({num: i}, true) do |request, response|
       puts response.body
-      mutex.synchronize { count += 1 }
+      mutex.synchronize do
+        count += 1
+        lock.synchronize { condition.signal } if count >= SAMPLES
+      end
     end
   end
 end
@@ -31,12 +36,11 @@ class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i
 
   def on_message(request, response)
-    response.body = "#{request.params["num"].to_i + 1}. Hello, World!"
+    response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
   end
 end
 
-while count < SAMPLES do
-  sleep 0.01
-end
+lock.synchronize { condition.wait(lock) }
+
 puts "Total: #{count}"
 First.consumers.map(&:terminate)
