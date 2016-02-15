@@ -19,13 +19,13 @@ module Fleck
         "status" => @status,
         "errors" => @errors,
         "body"   => @body
-      })
+      }, mode: :compat)
     rescue => e
       logger.error e.inspect + "\n" + e.backtrace.join("\n")
       return Oj.dump({
         "status" => 500,
         "errors" => ['Internal Server Error', 'Failed to dump the response to JSON']
-      })
+      }, mode: :compat)
     end
   end
 end

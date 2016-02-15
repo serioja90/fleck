@@ -37,9 +37,9 @@ module Fleck
     def send!(async = false)
       @started_at = Time.now.to_f
       data = Oj.dump({
-        "headers" => @headers,
-        "params"  => @params
-      })
+        headers: @headers,
+        params:  @params
+      }, mode: :compat)
       logger.debug("Sending request with data: #{data}")
 
       @exchange.publish(data, routing_key: @routing_key, reply_to: @reply_to, correlation_id: @id)
