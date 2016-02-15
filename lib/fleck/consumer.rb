@@ -42,7 +42,7 @@ module Fleck
       trace.enable
     end
 
-    def initialize(thread_id)
+    def initialize(thread_id = nil)
       @thread_id    = thread_id
       @connection   = nil
 
@@ -78,7 +78,7 @@ module Fleck
     def logger
       return @logger if @logger
       @logger = self.class.logger.clone
-      @logger.progname = "#{self.class.name}[#{@thread_id}]"
+      @logger.progname = "#{self.class.name}" + (configs[:concurrency].to_i <= 1 ? "" : "[#{@thread_id}]")
 
       @logger
     end
