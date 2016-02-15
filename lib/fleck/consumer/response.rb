@@ -3,15 +3,16 @@ module Fleck
   class Consumer::Response
     include Fleck::Loggable
 
-    attr_accessor :id, :status, :errors, :body
+    attr_accessor :id, :status, :errors, :headers, :body
 
     def initialize(request_id)
       @id = request_id
       logger.progname += " #{@id}"
 
-      @status = 200
-      @errors = []
-      @body   = nil
+      @status  = 200
+      @errors  = []
+      @headers = {}
+      @body    = nil
     end
 
     def not_found(msg = nil)
@@ -31,9 +32,10 @@ module Fleck
 
     def to_json
       return Oj.dump({
-        "status" => @status,
-        "errors" => @errors,
-        "body"   => @body
+        "status"  => @status,
+        "errors"  => @errors,
+        "headers" => @headers,
+        "body"    => @body
       }, mode: :compat)
     rescue => e
       logger.error e.inspect + "\n" + e.backtrace.join("\n")
@@ -41,6 +43,10 @@ module Fleck
         "status" => 500,
         "errors" => ['Internal Server Error', 'Failed to dump the response to JSON']
       }, mode: :compat)
+    end
+
+    def to_s
+      return self.inspect
     end
   end
 end
