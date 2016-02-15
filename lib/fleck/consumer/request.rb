@@ -3,7 +3,7 @@ module Fleck
   class Consumer::Request
     include Fleck::Loggable
 
-    attr_reader :id, :metadata, :payload, :data, :headers, :action, :body, :status, :errors
+    attr_reader :id, :metadata, :payload, :data, :headers, :action, :params, :status, :errors
 
     def initialize(metadata, payload)
       @id              = metadata.correlation_id
@@ -14,7 +14,7 @@ module Fleck
       @data     = {}
       @headers  = {}
       @action   = nil
-      @body     = nil
+      @params   = {}
       @status   = 200
       @errors   = []
 
@@ -25,10 +25,10 @@ module Fleck
 
     def parse_request!
       logger.debug "Parsing request: #{@payload}"
-      @data = Oj.load(@payload)
+      @data    = Oj.load(@payload)
       @headers = @data["headers"] || {}
       @action  = @headers["action"]
-      @body    = @data["body"]
+      @params  = @data["params"] || {}
     rescue Oj::ParseError => e
       logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
       @status = 400

@@ -5,7 +5,7 @@ module Fleck
 
     attr_reader :id, :response
 
-    def initialize(exchange, routing_key, reply_to, payload = {}, headers = {}, &callback)
+    def initialize(exchange, routing_key, reply_to, params = {}, headers = {}, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
@@ -14,7 +14,7 @@ module Fleck
       @exchange    = exchange
       @routing_key = routing_key
       @reply_to    = reply_to
-      @payload     = payload
+      @params      = params
       @headers     = headers
       @response    = nil
       @lock        = Mutex.new
@@ -38,7 +38,7 @@ module Fleck
       @started_at = Time.now.to_f
       data = Oj.dump({
         "headers" => @headers,
-        "body"    => @payload
+        "params"  => @params
       })
       logger.debug("Sending request with data: #{data}")
 

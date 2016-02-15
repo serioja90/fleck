@@ -20,7 +20,7 @@ mutex = Mutex.new
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(i, true) do |request, response|
+    client.request({"num" => i}, true) do |request, response|
       puts response.body
       mutex.synchronize { count += 1 }
     end
@@ -31,7 +31,7 @@ class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i
 
   def on_message(request, response)
-    response.body = "#{request.body.to_i + 1}. Hello, World!"
+    response.body = "#{request.params["num"].to_i + 1}. Hello, World!"
   end
 end
 
