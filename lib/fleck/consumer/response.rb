@@ -46,7 +46,7 @@ module Fleck
     end
 
     def to_s
-      return self.inspect
+      return "#<#{self.class} #{self.to_json}>"
     end
   end
 end
