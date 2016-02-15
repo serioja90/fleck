@@ -20,9 +20,13 @@ module Fleck
       @errors << msg if msg
     end
 
-    def render_error(status, messages = [])
+    def render_error(status, msg = [])
       @status = status.to_i
-      @errors += messages
+      if msg.is_a?(Array)
+        @errors += msg
+      else
+        @errors << msg
+      end
     end
 
     def to_json
