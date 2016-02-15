@@ -64,7 +64,7 @@ module Fleck
       end
     end
 
-    def on_message(delivery_info, metadata, payload)
+    def on_message(request, response)
       raise NotImplementedError.new("You must implement #on_message(delivery_info, metadata, payload) method")
     end
 
@@ -109,15 +109,23 @@ module Fleck
     def subscribe!
       logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
       @subscription = @queue.subscribe do |delivery_info, metadata, payload|
-        data     = Oj.load(payload)
-        result   = on_message(data["headers"], data["body"])
-        response = Oj.dump({"status" => 200, "body" => result})
+        response = Fleck::Consumer::Response.new(metadata.correlation_id)
+        begin
+          request  = Fleck::Consumer::Request.new(metadata, payload)
+          if request.errors.empty?
+            on_message(request, response)
+          else
+            response.status = request.status
+            response.errors += request.errors
+          end
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+          response.status = 500
+          response.errors << e.to_s
+        end
+
         logger.debug "Sending response: #{response}"
-        @exchange.publish(
-          response,
-          routing_key:    metadata.reply_to,
-          correlation_id: metadata.correlation_id
-        )
+        @exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
       end
     end
 
@@ -127,3 +135,6 @@ module Fleck
     end
   end
 end
+
+require "fleck/consumer/request"
+require "fleck/consumer/response"

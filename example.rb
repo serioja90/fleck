@@ -30,8 +30,8 @@ end
 class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i
 
-  def on_message(headers, payload)
-    return "#{payload.to_i + 1}. Hello, World!"
+  def on_message(request, response)
+    response.body = "#{request.body.to_i + 1}. Hello, World!"
   end
 end
 
