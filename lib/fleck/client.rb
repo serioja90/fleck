@@ -24,8 +24,8 @@ module Fleck
       logger.debug("Client initialized!")
     end
 
-    def request(payload, async = false, &block)
-      request = Fleck::Client::Request.new(@exchange, @queue_name, @reply_queue.name, payload, &block)
+    def request(headers = {}, payload = {}, async = false, &block)
+      request = Fleck::Client::Request.new(@exchange, @queue_name, @reply_queue.name, headers, payload, &block)
       @requests[request.id] = request
       request.send!(async)
 

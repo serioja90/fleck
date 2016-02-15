@@ -121,7 +121,7 @@ module Fleck
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
           response.status = 500
-          response.errors << e.to_s
+          response.errors << 'Internal Server Error'
         end
 
         logger.debug "Sending response: #{response}"

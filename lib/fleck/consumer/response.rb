@@ -14,6 +14,17 @@ module Fleck
       @body   = nil
     end
 
+    def not_found(msg = nil)
+      @status = 404
+      @errors << 'Resource Not Found'
+      @errors << msg if msg
+    end
+
+    def render_error(status, messages = [])
+      @status = status.to_i
+      @errors += messages
+    end
+
     def to_json
       return Oj.dump({
         "status" => @status,
