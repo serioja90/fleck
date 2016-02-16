@@ -1,8 +1,7 @@
 # Fleck
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/fleck`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+**Fleck** is a Ruby gem for comunication over RabbitMQ. It implements both `Fleck::Consumer` for messages consumption from RabbitMQ queues and
+`Fleck::Client` for making RPC (Remote Procedure Call) and asynchronous calls.
 
 ## Installation
 
@@ -20,19 +19,97 @@ Or install it yourself as:
 
     $ gem install fleck
 
+
+
 ## Usage
 
-TODO: Write usage instructions here
+Before using **Fleck** you might want to configure it. For doing that you could use as example the code below:
 
-## Development
+```ruby
+require 'fleck'
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+# configure defaults for fleck
+Fleck.configure do |config|
+  config.loglevel      = Logger::INFO # log level
+  config.logfile       = STDOUT       # the file where to write the logs
+  config.progname      = 'MyApp'      # the progname prefix to use in logs
+  config.default_host  = '127.0.0.1'  # default host to use for connections to RabbitMQ
+  config.default_port  = 5672         # default port to use for connections to RabbitMQ
+  config.default_user  = 'guest'      # default user to use for connections to RabbitMQ
+  config.default_pass  = 'guest'      # default password to use for connections to RabbitMQ
+  config.default_vhost = '/'          # default vhost to use for connections to RabbitMQ
+  config.default_queue = 'default'    # default queue name to use in consumers, when not specified
+end
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+### Fleck::Client
+
+You could use **Fleck** for both making requests and consuming requests from the queues. Now we are going to see how to enqueue a request to a specific queue:
+
+```ruby
+QUEUE   = 'my.queue'                  # the name of the queue where to enqueue the request
+HEADERS = {my_header: 'a header'}     # the headers of the request
+PARAMS  = {parameter: 'a parameter'}  # the parameters of the request
+ASYNC   = false                       # a flag to indicate if the request is async or not
+
+
+connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: 'guest', pass: 'guest', vhost: '/')
+client = Fleck::Client.new(connection, QUEUE)
+response = client.request(HEADERS, PARAMS, ASYNC)
+
+response.status  # => returns the status code of the response
+response.headers # => returns the headers Hash of the response
+response.body    # => returns the body of the response
+response.errors  # => returns the Array of errors
+```
+
+#### Request with block
+
+You might want to process the response of asynchronous requests when the response is ready. In that case you could pass a block to the request,
+so that the block is called when the response is completed:
+
+```ruby
+client.request({}, {param1: 'myparam'}, true) do |request, response|
+  if response.status == 200
+    puts "#{response.status} #{response.body}"
+  else
+    puts "#{response.status} #{response.errors.join(", ")}"
+  end
+end
+```
+
+### Fleck::Consumer
+
+To use `Fleck::Consumer` all you need is to inherit it by an another class:
+
+```ruby
+class MyConsumer < Fleck::Consumer
+  configure queue: 'my.queue', concurrency: 2
+
+  def on_message(request, response)
+    logger.debug "HEADERS: #{request.headers}"
+    logger.debug "PARAMS: #{request.params}"
+
+    if rand > 0.1
+      response.status = 200
+      response.body = {x: rand, y: rand}
+    else
+      response.render_error(500, 'Internal Server Error (just a joke)')
+    end
+  end
+end
+```
+
+This code will automatically automatically start `N` instances of MyConsumer in background (you don't have to do anything), that will start consuming
+messages from `my.queue` and will respond with a 200 status when the randomly generated number is greater than `0.1` and with a 500 otherwise.
+
+**NOTE**:
+
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/serioja90/fleck. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](contributor-covenant.org) code of conduct.
+Bug reports and pull requests are welcome on GitHub at https://github.com/serioja90/fleck. This project is intended to be a safe, welcoming space
+for collaboration, and contributors are expected to adhere to the [Contributor Covenant](contributor-covenant.org) code of conduct.
 
 
 ## License
