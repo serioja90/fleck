@@ -12,12 +12,16 @@ module Fleck
       @requests    = ThreadSafe::Hash.new
 
       @reply_queue.subscribe do |delivery_info, metadata, payload|
-        logger.debug "Response received: #{payload}"
-        request = @requests[metadata[:correlation_id]]
-        if request
-          request.response = Fleck::Client::Response.new(payload)
-          request.complete!
-          @requests.delete metadata[:correlation_id]
+        begin
+          logger.debug "Response received: #{payload}"
+          request = @requests[metadata[:correlation_id]]
+          if request
+            request.response = Fleck::Client::Response.new(payload)
+            request.complete!
+            @requests.delete metadata[:correlation_id]
+          end
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
 
@@ -41,7 +45,7 @@ module Fleck
         begin
           request.complete!
         rescue => e
-          logger.error e.inspect
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
     end
