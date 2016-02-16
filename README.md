@@ -103,7 +103,8 @@ end
 This code will automatically automatically start `N` instances of MyConsumer in background (you don't have to do anything), that will start consuming
 messages from `my.queue` and will respond with a 200 status when the randomly generated number is greater than `0.1` and with a 500 otherwise.
 
-**NOTE**:
+**NOTE**: the default status code of the response is 200, but if any uncaught exception is raised from within `#on_message` method, the status
+ will automatically change to 500 and will add `"Internal Server Error"` message to response errors array.
 
 
 ## Contributing
