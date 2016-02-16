@@ -107,7 +107,7 @@ module Fleck
     end
 
     def subscribe!
-      logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
+      logger.debug "Consuming from queue: #{@__queue_name.color(:green)}"
       @__subscription = @__queue.subscribe do |delivery_info, metadata, payload|
         response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
