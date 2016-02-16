@@ -41,6 +41,8 @@ module Fleck
     key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
     conn = @connections[key]
     if !conn || conn.closed?
+      opts[:logger] = Fleck.logger.clone
+      opts[:logger].progname += "::Bunny"
       logger.info "New connection #{key}"
       conn = Bunny.new(opts)
       conn.start
