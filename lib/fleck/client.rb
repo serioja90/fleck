@@ -11,7 +11,7 @@ module Fleck
       @reply_queue = @channel.queue("", exclusive: true)
       @requests    = ThreadSafe::Hash.new
 
-      @reply_queue.subscribe do |delivery_info, metadata, payload|
+      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
           request = @requests[metadata[:correlation_id]]
@@ -41,13 +41,16 @@ module Fleck
     end
 
     def terminate
+      logger.info "Unsubscribing from #{@reply_queue.name}"
       @requests.each do |id, request|
         begin
-          request.complete!
+          request.cancel!
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
+      @requests.clear
+      @subscription.cancel
     end
   end
 end
