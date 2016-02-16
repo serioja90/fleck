@@ -1,7 +1,7 @@
 
 class HashWithIndifferentAccess < Hash
   def initialize(original)
-    super
+    super(nil)
     copy_from(original)
   end
 
