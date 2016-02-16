@@ -17,6 +17,10 @@ module Fleck
   @consumers   = ThreadSafe::Array.new
   @connections = ThreadSafe::Hash.new
 
+  at_exit do
+    Fleck.terminate
+  end
+
   def self.configure
     yield @config if block_given?
     @config
@@ -33,7 +37,7 @@ module Fleck
   end
 
   def self.connection(options)
-    opts = options
+    opts = Fleck.config.default_options.merge(options)
     key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
     conn = @connections[key]
     if !conn || conn.closed?
@@ -43,6 +47,19 @@ module Fleck
       @connections[key] = conn
     end
     return conn
+  end
+
+  def self.terminate
+    @connections.each do |key, connection|
+      begin
+        Fleck.logger.info "Closing connection #{key}"
+        connection.close
+      rescue => e
+        Fleck.logger.error e.inspect
+      end
+    end
+
+    true
   end
 
   private

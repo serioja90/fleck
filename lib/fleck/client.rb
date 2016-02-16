@@ -22,6 +22,10 @@ module Fleck
       end
 
       logger.debug("Client initialized!")
+
+      at_exit do
+        terminate
+      end
     end
 
     def request(headers = {}, payload = {}, async = false, &block)
@@ -30,6 +34,16 @@ module Fleck
       request.send!(async)
 
       return request.response
+    end
+
+    def terminate
+      @requests.each do |id, request|
+        begin
+          request.complete!
+        rescue => e
+          logger.error e.inspect
+        end
+      end
     end
   end
 end
