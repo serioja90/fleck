@@ -43,15 +43,15 @@ module Fleck
     end
 
     def initialize(thread_id = nil)
-      @thread_id    = thread_id
-      @connection   = nil
+      @__thread_id    = thread_id
+      @__connection   = nil
 
-      @host       = configs[:host]
-      @port       = configs[:port]
-      @user       = configs[:user]     || 'guest'
-      @pass       = configs[:password] || configs[:pass]
-      @vhost      = configs[:vhost]    || "/"
-      @queue_name = configs[:queue]
+      @__host       = configs[:host]
+      @__port       = configs[:port]
+      @__user       = configs[:user]     || 'guest'
+      @__pass       = configs[:password] || configs[:pass]
+      @__vhost      = configs[:vhost]    || "/"
+      @__queue_name = configs[:queue]
 
       logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
 
@@ -69,8 +69,8 @@ module Fleck
     end
 
     def terminate
-      unless @channel.closed?
-        @channel.close
+      unless @__channel.closed?
+        @__channel.close
         logger.info "Consumer successfully terminated."
       end
     end
@@ -78,7 +78,7 @@ module Fleck
     def logger
       return @logger if @logger
       @logger = self.class.logger.clone
-      @logger.progname = "#{self.class.name}" + (configs[:concurrency].to_i <= 1 ? "" : "[#{@thread_id}]")
+      @logger.progname = "#{self.class.name}" + (configs[:concurrency].to_i <= 1 ? "" : "[#{@__thread_id}]")
 
       @logger
     end
@@ -90,25 +90,25 @@ module Fleck
     protected
 
     def connect!
-      @connection = Fleck.connection(host: @host, port: @port, user: @user, pass: @pass, vhost: @vhost)
+      @__connection = Fleck.connection(host: @__host, port: @__port, user: @__user, pass: @__pass, vhost: @__vhost)
     end
 
     def create_channel!
-      if @channel && !@channel.closed?
+      if @__channel && !@__channel.closed?
         logger.info("Closing the opened channel...")
-        @channel.close
+        @__channel.close
       end
 
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
-      @channel  = @connection.create_channel
-      @channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
-      @queue    = @channel.queue(@queue_name, auto_delete: false)
-      @exchange = @channel.default_exchange
+      @__channel  = @__connection.create_channel
+      @__channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
+      @__queue    = @__channel.queue(@__queue_name, auto_delete: false)
+      @__exchange = @__channel.default_exchange
     end
 
     def subscribe!
       logger.debug "Consuming from queue: #{@queue_name.color(:green)}"
-      @subscription = @queue.subscribe do |delivery_info, metadata, payload|
+      @__subscription = @__queue.subscribe do |delivery_info, metadata, payload|
         response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
           request  = Fleck::Consumer::Request.new(metadata, payload)
@@ -125,7 +125,7 @@ module Fleck
         end
 
         logger.debug "Sending response: #{response}"
-        @exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+        @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
       end
     end
 
