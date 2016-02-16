@@ -54,7 +54,7 @@ module Fleck
 
     def cancel!
       logger.warn "Request canceled!"
-      response = Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
+      self.response = Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       complete!
     end
   end
