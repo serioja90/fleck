@@ -55,7 +55,7 @@ ASYNC   = false                       # a flag to indicate if the request is asy
 
 connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: 'guest', pass: 'guest', vhost: '/')
 client = Fleck::Client.new(connection, QUEUE)
-response = client.request(HEADERS, PARAMS, ASYNC)
+response = client.request(headers: HEADERS, params: PARAMS, async: ASYNC)
 
 response.status  # => returns the status code of the response
 response.headers # => returns the headers Hash of the response
@@ -63,13 +63,20 @@ response.body    # => returns the body of the response
 response.errors  # => returns the Array of errors
 ```
 
+All the options of the requests are optional. The available options for request are:
+  - `headers:` - (default: `{}`) - allows to set headers for the request
+  - `params`   - (default: `{}`) - allows to set the parameters of the request
+  - `async`    - (default: `false`) - indicates if the request should be executed asynchronously
+  - `timeout`  - (default: `nil`) - when set, indicates the request timeout in seconds after which the request will be canceled
+  - `queue`    - (default: `<client queue>`) - allows to specify a different queue where to enqueue the request
+
 #### Request with block
 
 You might want to process the response of asynchronous requests when the response is ready. In that case you could pass a block to the request,
 so that the block is called when the response is completed:
 
 ```ruby
-client.request({}, {param1: 'myparam'}, true) do |request, response|
+client.request(headers: {}, params: {param1: 'myparam'}, async: true) do |request, response|
   if response.status == 200
     puts "#{response.status} #{response.body}"
   else
@@ -77,6 +84,7 @@ client.request({}, {param1: 'myparam'}, true) do |request, response|
   end
 end
 ```
+
 
 ### Fleck::Consumer
 
