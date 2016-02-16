@@ -58,6 +58,7 @@ module Fleck
         Fleck.logger.error e.inspect
       end
     end
+    @connections.clear
 
     true
   end
