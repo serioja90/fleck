@@ -58,10 +58,10 @@ module Fleck
 
     def logger=(new_logger)
       if new_logger.nil?
-        @logger.close
+        @logger.close if @logger
         @logger = ::Logger.new(nil)
       else
-        @logger.close
+        @logger.close if @logger
         @logger = new_logger.clone
         @logger.formatter = formatter
         @logger.progname  = @progname
