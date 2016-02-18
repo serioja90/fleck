@@ -11,7 +11,7 @@ module Fleck
       @reply_queue = @channel.queue("", exclusive: true)
       @requests    = ThreadSafe::Hash.new
 
-      @reply_queue.subscribe do |delivery_info, metadata, payload|
+      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
           request = @requests[metadata[:correlation_id]]
@@ -32,22 +32,37 @@ module Fleck
       end
     end
 
-    def request(headers = {}, payload = {}, async = false, &block)
-      request = Fleck::Client::Request.new(@exchange, @queue_name, @reply_queue.name, headers, payload, &block)
+    def request(headers: {}, params: {}, async: false, timeout: nil, queue: @queue_name, &block)
+      request = Fleck::Client::Request.new(@exchange, queue, @reply_queue.name, headers, params, &block)
       @requests[request.id] = request
-      request.send!(async)
+      if timeout && !async
+        begin
+          Timeout.timeout(timeout.to_f) do
+            request.send!(false)
+          end
+        rescue Timeout::Error => e
+          logger.warn "Failed to get any response in #{timeout} seconds for request #{request.id.to_s.color(:red)}! The request will be canceled."
+          request.cancel!
+          @requests.delete request.id
+        end
+      else
+        request.send!(async)
+      end
 
       return request.response
     end
 
     def terminate
+      logger.info "Unsubscribing from #{@reply_queue.name}"
       @requests.each do |id, request|
         begin
-          request.complete!
+          request.cancel!
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
+      @requests.clear
+      @subscription.cancel
     end
   end
 end

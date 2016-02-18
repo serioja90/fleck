@@ -17,10 +17,6 @@ module Fleck
   @consumers   = ThreadSafe::Array.new
   @connections = ThreadSafe::Hash.new
 
-  at_exit do
-    Fleck.terminate
-  end
-
   def self.configure
     yield @config if block_given?
     @config

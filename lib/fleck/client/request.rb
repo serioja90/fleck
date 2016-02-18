@@ -51,5 +51,11 @@ module Fleck
       @ended_at = Time.now.to_f
       logger.debug "Done in #{((@ended_at - @started_at).round(5) * 1000).round(2)} ms"
     end
+
+    def cancel!
+      logger.warn "Request canceled!"
+      self.response = Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
+      complete!
+    end
   end
 end
