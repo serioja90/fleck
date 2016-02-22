@@ -87,6 +87,26 @@ module Fleck
       @configs ||= self.class.configs
     end
 
+    def connection
+      return @__connection
+    end
+
+    def channel
+      return @__channel
+    end
+
+    def queue
+      return @__queue
+    end
+
+    def exchange
+      return @__exchange
+    end
+
+    def subscription
+      return @__subscription
+    end
+
     protected
 
     def connect!
