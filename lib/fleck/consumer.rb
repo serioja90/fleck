@@ -128,7 +128,7 @@ module Fleck
 
     def subscribe!
       logger.debug "Consuming from queue: #{@__queue_name.color(:green)}"
-      @__subscription = @__queue.subscribe do |delivery_info, metadata, payload|
+      @__subscription = @__queue.subscribe(manual_ack: true) do |delivery_info, metadata, payload|
         response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
           request  = Fleck::Consumer::Request.new(metadata, payload)
@@ -144,8 +144,15 @@ module Fleck
           response.errors << 'Internal Server Error'
         end
 
-        logger.debug "Sending response: #{response}"
-        @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+        if response.rejected?
+          # the request was rejected, so we have to notify the reject
+          logger.warn "Request #{response.id} was rejected!"
+          @__channel.reject(delivery_info.delivery_tag, response.requeue?)
+        else
+          logger.debug "Sending response: #{response}"
+          @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+          @__channel.ack(delivery_info.delivery_tag)
+        end
       end
     end
 
