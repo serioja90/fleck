@@ -45,6 +45,7 @@ module Fleck
     def initialize(thread_id = nil)
       @__thread_id    = thread_id
       @__connection   = nil
+      @__consumer_tag = nil
 
       @__host       = configs[:host]
       @__port       = configs[:port]
@@ -107,6 +108,15 @@ module Fleck
       return @__subscription
     end
 
+    def pause
+      cancel_ok = @__subscription.cancel
+      @__consumer_tag = cancel_ok.consumer_tag
+    end
+
+    def resume
+      subscribe!
+    end
+
     protected
 
     def connect!
@@ -128,7 +138,11 @@ module Fleck
 
     def subscribe!
       logger.debug "Consuming from queue: #{@__queue_name.color(:green)}"
-      @__subscription = @__queue.subscribe(manual_ack: true) do |delivery_info, metadata, payload|
+
+      options = { manual_ack: true }
+      options[:consumer_tag] = @__consumer_tag if @__consumer_tag
+
+      @__subscription = @__queue.subscribe(options) do |delivery_info, metadata, payload|
         response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
           request  = Fleck::Consumer::Request.new(metadata, payload)
