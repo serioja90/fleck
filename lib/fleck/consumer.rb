@@ -164,7 +164,7 @@ module Fleck
           @__channel.reject(delivery_info.delivery_tag, response.requeue?)
         else
           logger.debug "Sending response: #{response}"
-          @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+          @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
           @__channel.ack(delivery_info.delivery_tag)
         end
       end

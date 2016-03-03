@@ -1,6 +1,8 @@
 # CHANGELOG
 
-## (develop) ##
+## (develop)
+  - **NEW** set `mandatory: true` when publishing the request to RabbitMQ for both `Fleck::Client` and `Fleck::Consumer`, in order to ensure that requests and responses
+  -         are enqueued for sure to RabbitMQ.
   - **NEW** implemented `#pause` and `#resume` methods for `Fleck::Consumer`, that allows to pause the consumer from consuming messages.
   - **NEW** `Fleck::Consumer::Response#reject!` support, that allows to reject the processed message. By default `requeue` parameter is set to `false`, so that
             failed requests aren't requeued. You should call `response.reject(requeue: true)` within the `on_message` method, if you want to requeue the processing

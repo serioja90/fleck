@@ -19,6 +19,8 @@ module Fleck
             request.response = Fleck::Client::Response.new(payload)
             request.complete!
             @requests.delete metadata[:correlation_id]
+          else
+            logger.warn "Request #{metadata[:correlation_id]} not found!"
           end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
