@@ -11,6 +11,19 @@ module Fleck
       @reply_queue = @channel.queue("", exclusive: true)
       @requests    = ThreadSafe::Hash.new
 
+      @exchange.on_return do |return_info, metadata, content|
+        begin
+          logger.warn "Request #{metadata[:correlation_id]} returned"
+          request = @requests[metadata[:correlation_id]]
+          if request
+            request.cancel!
+            @requests.delete metadata[:correlation_id]
+          end
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+        end
+      end
+
       @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
@@ -35,17 +48,26 @@ module Fleck
     end
 
     def request(headers: {}, params: {}, async: false, timeout: nil, queue: @queue_name, &block)
-      request = Fleck::Client::Request.new(@exchange, queue, @reply_queue.name, headers, params, &block)
+      request = Fleck::Client::Request.new(@exchange, queue, @reply_queue.name, headers: headers, params: params, timeout: timeout, &block)
       @requests[request.id] = request
       if timeout && !async
         begin
           Timeout.timeout(timeout.to_f) do
             request.send!(false)
           end
-        rescue Timeout::Error => e
+        rescue Timeout::Error
           logger.warn "Failed to get any response in #{timeout} seconds for request #{request.id.to_s.color(:red)}! The request will be canceled."
           request.cancel!
           @requests.delete request.id
+        end
+      elsif timeout && async
+        request.send!(async)
+        Ztimer.after(timeout * 1000) do |slot|
+          unless request.completed
+            logger.warn "TIMEOUT #{request.id} (#{((slot.executed_at - slot.enqueued_at) / 1000.to_f).round(2)} ms)"
+            request.cancel!
+            @requests.delete request.id
+          end
         end
       else
         request.send!(async)
@@ -56,6 +78,8 @@ module Fleck
 
     def terminate
       logger.info "Unsubscribing from #{@reply_queue.name}"
+      @subscription.cancel
+      @channel.close
       @requests.each do |id, request|
         begin
           request.cancel!
@@ -64,7 +88,6 @@ module Fleck
         end
       end
       @requests.clear
-      @subscription.cancel
     end
   end
 end

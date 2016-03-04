@@ -3,9 +3,9 @@ module Fleck
   class Client::Request
     include Fleck::Loggable
 
-    attr_reader :id, :response
+    attr_reader :id, :response, :completed
 
-    def initialize(exchange, routing_key, reply_to, headers = {}, params = {}, &callback)
+    def initialize(exchange, routing_key, reply_to, headers: {}, params: {}, timeout: nil, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
@@ -16,12 +16,15 @@ module Fleck
       @reply_to    = reply_to
       @params      = params
       @headers     = headers
+      @timeout     = timeout
       @response    = nil
       @lock        = Mutex.new
       @condition   = ConditionVariable.new
       @callback    = callback
       @started_at  = nil
       @ended_at    = nil
+      @completed   = false
+      @async       = false
 
       logger.debug "Request prepared"
     end
@@ -36,19 +39,24 @@ module Fleck
 
     def send!(async = false)
       @started_at = Time.now.to_f
+      @async = async
       data = Oj.dump({
         headers: @headers,
         params:  @params
       }, mode: :compat)
       logger.debug("Sending request with data: #{data}")
 
-      @exchange.publish(data, routing_key: @routing_key, reply_to: @reply_to, correlation_id: @id, mandatory: true)
-      @lock.synchronize { @condition.wait(@lock) } unless async
+      options = { routing_key: @routing_key, reply_to: @reply_to, correlation_id: @id, mandatory: true }
+      options[:expiration] = (@timeout * 1000).to_i unless @timeout.nil?
+
+      @exchange.publish(data, options)
+      @lock.synchronize { @condition.wait(@lock) } unless @async
     end
 
     def complete!
-      @lock.synchronize { @condition.signal }
-      @ended_at = Time.now.to_f
+      @completed = true
+      @ended_at  = Time.now.to_f
+      @lock.synchronize { @condition.signal } unless @async
       logger.debug "Done in #{((@ended_at - @started_at).round(5) * 1000).round(2)} ms"
     end
 
