@@ -10,6 +10,8 @@ module Fleck
       @exchange    = @channel.default_exchange
       @reply_queue = @channel.queue("", exclusive: true)
       @requests    = ThreadSafe::Hash.new
+      @terminated  = false
+      @mutex       = Mutex.new
 
       @exchange.on_return do |return_info, metadata, content|
         begin
@@ -48,7 +50,11 @@ module Fleck
     end
 
     def request(headers: {}, params: {}, async: false, timeout: nil, queue: @queue_name, &block)
-      request = Fleck::Client::Request.new(@exchange, queue, @reply_queue.name, headers: headers, params: params, timeout: timeout, &block)
+      if @terminated
+        return Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
+      end
+
+      request = Fleck::Client::Request.new(self, queue, @reply_queue.name, headers: headers, params: params, timeout: timeout, &block)
       @requests[request.id] = request
       if timeout && !async
         begin
@@ -76,18 +82,24 @@ module Fleck
       return request.response
     end
 
+    def publish(data, options)
+      return if @terminated
+      @mutex.synchronize { @exchange.publish(data, options) }
+    end
+
     def terminate
+      @terminated = true
       logger.info "Unsubscribing from #{@reply_queue.name}"
-      @subscription.cancel
-      @channel.close
-      @requests.each do |id, request|
+      @subscription.cancel # stop receiving new messages
+      logger.info "Canceling pending requests"
+      # cancel pending requests
+      while item = @requests.shift do
         begin
-          request.cancel!
+          item[1].cancel!
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
-      @requests.clear
     end
   end
 end

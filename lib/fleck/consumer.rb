@@ -70,6 +70,7 @@ module Fleck
     end
 
     def terminate
+      pause
       unless @__channel.closed?
         @__channel.close
         logger.info "Consumer successfully terminated."
@@ -164,8 +165,12 @@ module Fleck
           @__channel.reject(delivery_info.delivery_tag, response.requeue?)
         else
           logger.debug "Sending response: #{response}"
-          @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
-          @__channel.ack(delivery_info.delivery_tag)
+          if @__channel.closed?
+            logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
+          else
+            @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__channel.ack(delivery_info.delivery_tag)
+          end
         end
       end
     end

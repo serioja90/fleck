@@ -5,13 +5,13 @@ module Fleck
 
     attr_reader :id, :response, :completed
 
-    def initialize(exchange, routing_key, reply_to, headers: {}, params: {}, timeout: nil, &callback)
+    def initialize(client, routing_key, reply_to, headers: {}, params: {}, timeout: nil, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
       logger.debug "Preparing new request"
 
-      @exchange    = exchange
+      @client      = client
       @routing_key = routing_key
       @reply_to    = reply_to
       @params      = params
@@ -49,7 +49,8 @@ module Fleck
       options = { routing_key: @routing_key, reply_to: @reply_to, correlation_id: @id, mandatory: true }
       options[:expiration] = (@timeout * 1000).to_i unless @timeout.nil?
 
-      @exchange.publish(data, options)
+      @client.publish(data, options)
+
       @lock.synchronize { @condition.wait(@lock) } unless @async
     end
 
