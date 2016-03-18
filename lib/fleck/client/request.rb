@@ -51,14 +51,22 @@ module Fleck
 
       @client.publish(data, options)
 
-      @lock.synchronize { @condition.wait(@lock) } unless @async
+      @lock.synchronize do
+        unless @async || @completed
+          logger.debug("Waiting for response")
+          @condition.wait(@lock)
+          logger.debug("Request terminated.")
+        end
+      end
     end
 
     def complete!
-      @completed = true
-      @ended_at  = Time.now.to_f
-      @lock.synchronize { @condition.signal } unless @async
-      logger.debug "Done in #{((@ended_at - @started_at).round(5) * 1000).round(2)} ms"
+      @lock.synchronize do
+        @completed = true
+        @ended_at  = Time.now.to_f
+        logger.debug "Done #{@async ? 'async' : 'synchronized'} in #{((@ended_at - @started_at).round(5) * 1000).round(2)} ms"
+        @condition.signal unless @async
+      end
     end
 
     def cancel!

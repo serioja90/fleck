@@ -29,11 +29,10 @@ module Fleck
       @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
-          request = @requests[metadata[:correlation_id]]
+          request = @requests.delete metadata[:correlation_id]
           if request
             request.response = Fleck::Client::Response.new(payload)
             request.complete!
-            @requests.delete metadata[:correlation_id]
           else
             logger.warn "Request #{metadata[:correlation_id]} not found!"
           end
