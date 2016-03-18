@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## (develop)
+  - **FIX** Use `:compat` mode when using `Oj` gem to dump/load JSON content.
   - **FIX** Prevent unnecessary `Fleck::Request` lock for response reception if the response already received.
   - **NEW** Implemented a timeout functionality for asynchronous request, so that if the request isn't completed within that timeout, it will be canceled and removed from
             requests list.
