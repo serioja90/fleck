@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## (develop)
+  - **FIX** Prevent unnecessary `Fleck::Request` lock for response reception if the response already received.
   - **NEW** Implemented a timeout functionality for asynchronous request, so that if the request isn't completed within that timeout, it will be canceled and removed from
             requests list.
   - **NEW** Set `mandatory: true` when publishing the request to RabbitMQ for both `Fleck::Client` and `Fleck::Consumer`, in order to ensure that requests and responses
