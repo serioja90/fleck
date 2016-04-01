@@ -1,4 +1,6 @@
-# CHANGELOG
+# CHANGELOG #
+
+## (develop)
 
 ## v0.3.0 (1 April 2016)
   - **FIX** Use `:compat` mode when using `Oj` gem to dump/load JSON content.
