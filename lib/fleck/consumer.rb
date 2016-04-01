@@ -45,6 +45,7 @@ module Fleck
     def initialize(thread_id = nil)
       @__thread_id    = thread_id
       @__connection   = nil
+      @__consumer_tag = nil
 
       @__host       = configs[:host]
       @__port       = configs[:port]
@@ -69,6 +70,7 @@ module Fleck
     end
 
     def terminate
+      pause
       unless @__channel.closed?
         @__channel.close
         logger.info "Consumer successfully terminated."
@@ -85,6 +87,35 @@ module Fleck
 
     def configs
       @configs ||= self.class.configs
+    end
+
+    def connection
+      return @__connection
+    end
+
+    def channel
+      return @__channel
+    end
+
+    def queue
+      return @__queue
+    end
+
+    def exchange
+      return @__exchange
+    end
+
+    def subscription
+      return @__subscription
+    end
+
+    def pause
+      cancel_ok = @__subscription.cancel
+      @__consumer_tag = cancel_ok.consumer_tag
+    end
+
+    def resume
+      subscribe!
     end
 
     protected
@@ -108,7 +139,11 @@ module Fleck
 
     def subscribe!
       logger.debug "Consuming from queue: #{@__queue_name.color(:green)}"
-      @__subscription = @__queue.subscribe do |delivery_info, metadata, payload|
+
+      options = { manual_ack: true }
+      options[:consumer_tag] = @__consumer_tag if @__consumer_tag
+
+      @__subscription = @__queue.subscribe(options) do |delivery_info, metadata, payload|
         response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
           request  = Fleck::Consumer::Request.new(metadata, payload)
@@ -124,8 +159,19 @@ module Fleck
           response.errors << 'Internal Server Error'
         end
 
-        logger.debug "Sending response: #{response}"
-        @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id)
+        if response.rejected?
+          # the request was rejected, so we have to notify the reject
+          logger.warn "Request #{response.id} was rejected!"
+          @__channel.reject(delivery_info.delivery_tag, response.requeue?)
+        else
+          logger.debug "Sending response: #{response}"
+          if @__channel.closed?
+            logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
+          else
+            @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__channel.ack(delivery_info.delivery_tag)
+          end
+        end
       end
     end
 

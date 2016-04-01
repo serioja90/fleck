@@ -9,10 +9,25 @@ module Fleck
       @id = request_id
       logger.progname += " #{@id}"
 
-      @status  = 200
-      @errors  = []
-      @headers = {}
-      @body    = nil
+      @status   = 200
+      @errors   = []
+      @headers  = {}
+      @body     = nil
+      @rejected = false
+      @requeue  = false
+    end
+
+    def reject!(requeue: false)
+      @rejected = true
+      @requeue  = requeue
+    end
+
+    def rejected?
+      return @rejected
+    end
+
+    def requeue?
+      return @requeue
     end
 
     def not_found(msg = nil)

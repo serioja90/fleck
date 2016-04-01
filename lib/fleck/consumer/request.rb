@@ -25,7 +25,7 @@ module Fleck
 
     def parse_request!
       logger.debug "Parsing request: #{@payload}"
-      @data    = Oj.load(@payload).to_hash_with_indifferent_access
+      @data    = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access
       @headers = @data["headers"] || {}
       @action  = @headers["action"]
       @params  = @data["params"] || {}

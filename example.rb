@@ -15,7 +15,10 @@ end
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
 client = Fleck::Client.new(connection, "example.queue")
 
-count = 0
+count   = 0
+success = 0
+failure = 0
+
 mutex = Mutex.new
 lock  = Mutex.new
 condition = ConditionVariable.new
@@ -24,17 +27,22 @@ class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i
 
   def on_message(request, response)
-    if request.action == "incr"
-      response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
+    if rand > 0.1
+      if request.action == "incr"
+        response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
+      else
+        response.not_found
+      end
     else
-      response.not_found
+      logger.warn "REJECTING REQUEST {headers: #{request.headers}, params: #{request.params}"
+      response.reject!(requeue: true)
     end
   end
 end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request({action: :incr}, {num: i}, true) do |request, response|
+    client.request(headers: {action: :incr}, params: {num: i}, async: true, timeout: 1) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else
@@ -42,13 +50,23 @@ Thread.new do
       end
       mutex.synchronize do
         count += 1
+        if response.status == 200
+          success += 1
+        else
+          failure += 1
+        end
+
         lock.synchronize { condition.signal } if count >= SAMPLES
       end
     end
   end
 end
 
-lock.synchronize { condition.wait(lock) }
+at_exit do
+  puts "Total: #{count}, Success: #{success}, Failure: #{failure}"
+end
 
-puts "Total: #{count}"
-First.consumers.map(&:terminate)
+lock.synchronize { condition.wait(lock) }
+exit
+
+#First.consumers.map(&:terminate)

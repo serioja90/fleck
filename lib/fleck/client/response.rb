@@ -5,7 +5,7 @@ module Fleck
 
     attr_accessor :status, :headers, :body, :errors
     def initialize(payload)
-      @data    = Oj.load(payload).to_hash_with_indifferent_access
+      @data    = Oj.load(payload, mode: :compat).to_hash_with_indifferent_access
       @status  = @data["status"]
       @headers = @data["headers"] || {}
       @body    = @data["body"]
