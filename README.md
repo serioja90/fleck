@@ -47,6 +47,7 @@ end
 You could use **Fleck** for both making requests and consuming requests from the queues. Now we are going to see how to enqueue a request to a specific queue:
 
 ```ruby
+ACTION  = 'do_something'              # the action to be executed by the consumer
 QUEUE   = 'my.queue'                  # the name of the queue where to enqueue the request
 HEADERS = {my_header: 'a header'}     # the headers of the request
 PARAMS  = {parameter: 'a parameter'}  # the parameters of the request
@@ -55,7 +56,7 @@ ASYNC   = false                       # a flag to indicate if the request is asy
 
 connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: 'guest', pass: 'guest', vhost: '/')
 client = Fleck::Client.new(connection, QUEUE)
-response = client.request(headers: HEADERS, params: PARAMS, async: ASYNC)
+response = client.request(action: ACTION, headers: HEADERS, params: PARAMS, async: ASYNC)
 
 response.status  # => returns the status code of the response
 response.headers # => returns the headers Hash of the response
@@ -64,11 +65,12 @@ response.errors  # => returns the Array of errors
 ```
 
 All the options of the requests are optional. The available options for request are:
-  - `headers:` - (default: `{}`) - allows to set headers for the request
-  - `params`   - (default: `{}`) - allows to set the parameters of the request
-  - `async`    - (default: `false`) - indicates if the request should be executed asynchronously
-  - `timeout`  - (default: `nil`) - when set, indicates the request timeout in seconds after which the request will be canceled
-  - `queue`    - (default: `<client queue>`) - allows to specify a different queue where to enqueue the request
+  - `action`  - (default: nil)  - used to indicate the action to be executed by the consumer
+  - `headers` - (default: `{}`) - allows to set headers for the request
+  - `params`  - (default: `{}`) - allows to set the parameters of the request
+  - `async`   - (default: `false`) - indicates if the request should be executed asynchronously
+  - `timeout` - (default: `nil`) - when set, indicates the request timeout in seconds after which the request will be canceled
+  - `queue`   - (default: `<client queue>`) - allows to specify a different queue where to enqueue the request
 
 #### Request with block
 
@@ -76,7 +78,7 @@ You might want to process the response of asynchronous requests when the respons
 so that the block is called when the response is completed:
 
 ```ruby
-client.request(headers: {}, params: {param1: 'myparam'}, async: true) do |request, response|
+client.request(action: 'do_something', headers: {}, params: {param1: 'myparam'}, async: true) do |request, response|
   if response.status == 200
     puts "#{response.status} #{response.body}"
   else
@@ -98,11 +100,16 @@ class MyConsumer < Fleck::Consumer
     logger.debug "HEADERS: #{request.headers}"
     logger.debug "PARAMS: #{request.params}"
 
-    if rand > 0.1
-      response.status = 200
-      response.body = {x: rand, y: rand}
+    case request.action
+    when 'random'
+      if rand > 0.1
+        response.status = 200
+        response.body = {x: rand, y: rand}
+      else
+        response.render_error(500, 'Internal Server Error (just a joke)')
+      end
     else
-      response.render_error(500, 'Internal Server Error (just a joke)')
+      response.not_found
     end
   end
 end
