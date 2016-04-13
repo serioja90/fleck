@@ -3,7 +3,7 @@ module Fleck
   class Consumer::Request
     include Fleck::Loggable
 
-    attr_reader :id, :metadata, :payload, :data, :headers, :action, :params, :status, :errors
+    attr_reader :id, :metadata, :payload, :action, :data, :headers, :action, :params, :status, :errors
 
     def initialize(metadata, payload)
       @id              = metadata.correlation_id
@@ -12,8 +12,8 @@ module Fleck
       @metadata = metadata
       @payload  = payload
       @data     = {}
-      @headers  = {}
-      @action   = nil
+      @headers  = @metadata.headers.to_hash_with_indifferent_access
+      @action   = @metadata.type
       @params   = {}
       @status   = 200
       @errors   = []
@@ -24,11 +24,14 @@ module Fleck
     protected
 
     def parse_request!
-      logger.debug "Parsing request: #{@payload}"
-      @data    = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access
-      @headers = @data["headers"] || {}
-      @action  = @headers["action"]
-      @params  = @data["params"] || {}
+      logger.debug "Parsing request (options: #{@metadata}, message: #{@payload})"
+
+      @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access
+      @headers.merge!(@data["headers"] || {})
+
+      @action            ||= @headers["action"]
+      @headers["action"] ||= @action
+      @params              = @data["params"] || {}
     rescue Oj::ParseError => e
       logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
       @status = 400
