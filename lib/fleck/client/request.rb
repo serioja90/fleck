@@ -5,7 +5,7 @@ module Fleck
 
     attr_reader :id, :response, :completed
 
-    def initialize(client, routing_key, reply_to, action: action, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
+    def initialize(client, routing_key, reply_to, action: nil, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
