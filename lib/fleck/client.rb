@@ -3,43 +3,20 @@ module Fleck
   class Client
     include Fleck::Loggable
 
-    def initialize(connection, queue_name)
+    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "")
       @connection  = connection
       @queue_name  = queue_name
-      @channel     = @connection.create_channel
-      @exchange    = @channel.default_exchange
-      @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
       @requests    = ThreadSafe::Hash.new
       @terminated  = false
       @mutex       = Mutex.new
 
-      @exchange.on_return do |return_info, metadata, content|
-        begin
-          logger.warn "Request #{metadata[:correlation_id]} returned"
-          request = @requests[metadata[:correlation_id]]
-          if request
-            request.cancel!
-            @requests.delete metadata[:correlation_id]
-          end
-        rescue => e
-          logger.error e.inspect + "\n" + e.backtrace.join("\n")
-        end
-      end
+      @channel     = @connection.create_channel
+      @exchange    = @channel.default_exchange
+      @publisher   = Bunny::Exchange.new(@channel, exchange_type, exchange_name)
+      @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
 
-      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
-        begin
-          logger.debug "Response received: #{payload}"
-          request = @requests.delete metadata[:correlation_id]
-          if request
-            request.response = Fleck::Client::Response.new(payload)
-            request.complete!
-          else
-            logger.warn "Request #{metadata[:correlation_id]} not found!"
-          end
-        rescue => e
-          logger.error e.inspect + "\n" + e.backtrace.join("\n")
-        end
-      end
+      handle_returned_messages!
+      handle_responses!
 
       logger.debug("Client initialized!")
 
@@ -83,7 +60,7 @@ module Fleck
 
     def publish(data, options)
       return if @terminated
-      @mutex.synchronize { @exchange.publish(data, options) }
+      @mutex.synchronize { @publisher.publish(data, options) }
     end
 
     def terminate
@@ -95,6 +72,41 @@ module Fleck
       while item = @requests.shift do
         begin
           item[1].cancel!
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+        end
+      end
+    end
+
+
+    protected
+
+    def handle_returned_messages!
+      @exchange.on_return do |return_info, metadata, content|
+        begin
+          logger.warn "Request #{metadata[:correlation_id]} returned"
+          request = @requests[metadata[:correlation_id]]
+          if request
+            request.cancel!
+            @requests.delete metadata[:correlation_id]
+          end
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+        end
+      end
+    end
+
+    def handle_responses!
+      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
+        begin
+          logger.debug "Response received: #{payload}"
+          request = @requests.delete metadata[:correlation_id]
+          if request
+            request.response = Fleck::Client::Response.new(payload)
+            request.complete!
+          else
+            logger.warn "Request #{metadata[:correlation_id]} not found!"
+          end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
