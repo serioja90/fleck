@@ -8,7 +8,7 @@ module Fleck
       @queue_name  = queue_name
       @channel     = @connection.create_channel
       @exchange    = @channel.default_exchange
-      @reply_queue = @channel.queue("", exclusive: true)
+      @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
       @requests    = ThreadSafe::Hash.new
       @terminated  = false
       @mutex       = Mutex.new
