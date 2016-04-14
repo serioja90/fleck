@@ -3,43 +3,22 @@ module Fleck
   class Client
     include Fleck::Loggable
 
-    def initialize(connection, queue_name)
-      @connection  = connection
-      @queue_name  = queue_name
+    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false)
+      @connection         = connection
+      @queue_name         = queue_name
+      @multiple_responses = multiple_responses
+      @default_timeout    = multiple_responses ? 60 : nil
+      @requests           = ThreadSafe::Hash.new
+      @terminated         = false
+      @mutex              = Mutex.new
+
       @channel     = @connection.create_channel
       @exchange    = @channel.default_exchange
+      @publisher   = Bunny::Exchange.new(@channel, exchange_type, exchange_name)
       @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
-      @requests    = ThreadSafe::Hash.new
-      @terminated  = false
-      @mutex       = Mutex.new
 
-      @exchange.on_return do |return_info, metadata, content|
-        begin
-          logger.warn "Request #{metadata[:correlation_id]} returned"
-          request = @requests[metadata[:correlation_id]]
-          if request
-            request.cancel!
-            @requests.delete metadata[:correlation_id]
-          end
-        rescue => e
-          logger.error e.inspect + "\n" + e.backtrace.join("\n")
-        end
-      end
-
-      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
-        begin
-          logger.debug "Response received: #{payload}"
-          request = @requests.delete metadata[:correlation_id]
-          if request
-            request.response = Fleck::Client::Response.new(payload)
-            request.complete!
-          else
-            logger.warn "Request #{metadata[:correlation_id]} not found!"
-          end
-        rescue => e
-          logger.error e.inspect + "\n" + e.backtrace.join("\n")
-        end
-      end
+      handle_returned_messages!
+      handle_responses!
 
       logger.debug("Client initialized!")
 
@@ -48,7 +27,7 @@ module Fleck
       end
     end
 
-    def request(action: nil, headers: {}, params: {}, async: false, timeout: nil, queue: @queue_name, rmq_options: {}, &block)
+    def request(action: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
       if @terminated
         return Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       end
@@ -68,6 +47,11 @@ module Fleck
       elsif timeout && async
         request.send!(async)
         Ztimer.after(timeout * 1000) do |slot|
+          if @multiple_responses && !request.response.nil?
+            request.complete!
+            @requests.delete request.id
+          end
+
           unless request.completed
             logger.warn "TIMEOUT #{request.id} (#{((slot.executed_at - slot.enqueued_at) / 1000.to_f).round(2)} ms)"
             request.cancel!
@@ -83,7 +67,7 @@ module Fleck
 
     def publish(data, options)
       return if @terminated
-      @mutex.synchronize { @exchange.publish(data, options) }
+      @mutex.synchronize { @publisher.publish(data, options) }
     end
 
     def terminate
@@ -95,6 +79,41 @@ module Fleck
       while item = @requests.shift do
         begin
           item[1].cancel!
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+        end
+      end
+    end
+
+
+    protected
+
+    def handle_returned_messages!
+      @exchange.on_return do |return_info, metadata, content|
+        begin
+          logger.warn "Request #{metadata[:correlation_id]} returned"
+          request = @requests[metadata[:correlation_id]]
+          if request
+            request.cancel!
+            @requests.delete metadata[:correlation_id]
+          end
+        rescue => e
+          logger.error e.inspect + "\n" + e.backtrace.join("\n")
+        end
+      end
+    end
+
+    def handle_responses!
+      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
+        begin
+          logger.debug "Response received: #{payload}"
+          request = @multiple_responses ? @requests[metadata[:correlation_id]] : @requests.delete(metadata[:correlation_id])
+          if request
+            request.response = Fleck::Client::Response.new(payload)
+            request.complete! unless @multiple_responses
+          else
+            logger.warn "Request #{metadata[:correlation_id]} not found!"
+          end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end

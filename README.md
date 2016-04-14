@@ -88,6 +88,58 @@ end
 ```
 
 
+#### Exchage type ####
+
+By default `Fleck::Client` will use the default exchage, which is a `:direct` exchange named `""`. But, if you need a different type of exchage,
+you could specify it by setting `:exchange_type` amd `:exchange_name` options when creating the client.
+
+```ruby
+connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: 'guest', pass: 'guest', vhost: '/')          # get a connection
+client = Fleck::Client.new(connection, 'my.queue', exchange_type: :fanout, exchange_name: 'my.fanout.exchange') # create a new client
+
+# make a request
+client.request(action: 'task', params: {x: 1, y: 2}, async: true, timeout: 5) do |request, response|
+  if response.status == 200
+    # we did it!
+    puts response.body
+  else
+    # something went wrong
+    puts "Something went wrong!"
+  end
+end
+```
+
+
+#### Multiple responses ####
+
+Sometimes you might need to receive multiple responses to a single request, for example if you're using a `:fanout` exchange, and
+there're multiple consumer that will respond to your request. The common `request <--> response` model won't match this situation,
+because after the first response the request will be terminated, that will cause a warning message for each response received after
+the first response. To solve this problem you could use the `:multiple_responses` option on client creation (by default is set to `false`),
+so that the client will be able to manage multiple responses.
+
+```ruby
+connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: 'guest', pass: 'guest', vhost: '/')                                    # get a connection
+client = Fleck::Client.new(connection, 'my.queue', exchange_type: :fanout, exchange_name: 'my.fanout.exchange', multiple_responses: true) # create a new client
+
+# make a request
+client.request(action: 'status', timeout: 5) do |request, response|
+  # this block will be executed for each received response
+  if response.status == 200
+    # we did it!
+    puts response.body
+  else
+    # something went wrong
+    puts "Something went wrong!"
+  end
+end
+```
+
+**NOTE**: when you enable the `:multiple_responses` option, this will forse `async: true` for each request. Furthermore, this will set a default
+timeout to `60` seconds, in order to prevent requests that are never completed, which may result in a memory leak. But if you need a request that
+is never completed, you could set `timeout: nil` when making the request.
+
+
 ### Fleck::Consumer
 
 To use `Fleck::Consumer` all you need is to inherit it by an another class:
@@ -119,7 +171,31 @@ This code will automatically automatically start `N` instances of MyConsumer in 
 messages from `my.queue` and will respond with a 200 status when the randomly generated number is greater than `0.1` and with a 500 otherwise.
 
 **NOTE**: the default status code of the response is 200, but if any uncaught exception is raised from within `#on_message` method, the status
- will automatically change to 500 and will add `"Internal Server Error"` message to response errors array.
+will automatically change to 500 and will add `"Internal Server Error"` message to response errors array.
+
+
+#### Exchange type for consumers ####
+
+By default `Fleck::Consumer` will use the default exchange to consume messages from a queue. But if you need a different type of exchange, you
+can specify it in consumer configuration.
+
+```ruby
+class MyConsumer < Fleck::Consumer
+  configure queue: '', concurrency: 1, exchange_type: :fanout, exchange_name: 'my.fanout.exchange'
+
+  def on_message(request, response)
+    logger.debug "HEADERS: #{request.headers}"
+    logger.debug "PARAMS: #{request.params}"
+
+    case request.action
+    when 'status'
+      response.body = {status: 'up & running'}
+    else
+      response.not_found
+    end
+  end
+end
+```
 
 
 ## Contributing
