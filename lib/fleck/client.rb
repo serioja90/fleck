@@ -3,12 +3,14 @@ module Fleck
   class Client
     include Fleck::Loggable
 
-    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "")
-      @connection  = connection
-      @queue_name  = queue_name
-      @requests    = ThreadSafe::Hash.new
-      @terminated  = false
-      @mutex       = Mutex.new
+    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false)
+      @connection         = connection
+      @queue_name         = queue_name
+      @multiple_responses = multiple_responses
+      @default_timeout    = multiple_responses ? 60 : nil
+      @requests           = ThreadSafe::Hash.new
+      @terminated         = false
+      @mutex              = Mutex.new
 
       @channel     = @connection.create_channel
       @exchange    = @channel.default_exchange
@@ -25,7 +27,7 @@ module Fleck
       end
     end
 
-    def request(action: nil, headers: {}, params: {}, async: false, timeout: nil, queue: @queue_name, rmq_options: {}, &block)
+    def request(action: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
       if @terminated
         return Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       end
@@ -45,6 +47,11 @@ module Fleck
       elsif timeout && async
         request.send!(async)
         Ztimer.after(timeout * 1000) do |slot|
+          if @multiple_responses && !request.response.nil?
+            request.complete!
+            @requests.delete request.id
+          end
+
           unless request.completed
             logger.warn "TIMEOUT #{request.id} (#{((slot.executed_at - slot.enqueued_at) / 1000.to_f).round(2)} ms)"
             request.cancel!
@@ -100,10 +107,10 @@ module Fleck
       @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
-          request = @requests.delete metadata[:correlation_id]
+          request = @multiple_responses ? @requests[metadata[:correlation_id]] : @requests.delete(metadata[:correlation_id])
           if request
             request.response = Fleck::Client::Response.new(payload)
-            request.complete!
+            request.complete! unless @multiple_responses
           else
             logger.warn "Request #{metadata[:correlation_id]} not found!"
           end
