@@ -1,6 +1,8 @@
 # CHANGELOG #
 
-## (develop) ##
+## develop ##
+
+## v0.4.0 (15 April 2016) ##
   - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.
   - **FIX** Use `auto_delete` queue for `Fleck::Client`, so that it is deleted when the client is terminated.
   - **NEW** Add `:rmq_options` option to `Fleck::Client::Request`, which can be used to pass options like `:persistent`, `mandatory`, etc. 
