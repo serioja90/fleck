@@ -47,12 +47,14 @@ module Fleck
       @__connection   = nil
       @__consumer_tag = nil
 
-      @__host       = configs[:host]
-      @__port       = configs[:port]
-      @__user       = configs[:user]     || 'guest'
-      @__pass       = configs[:password] || configs[:pass]
-      @__vhost      = configs[:vhost]    || "/"
-      @__queue_name = configs[:queue]
+      @__host          = configs[:host]
+      @__port          = configs[:port]
+      @__user          = configs[:user]          || 'guest'
+      @__pass          = configs[:password]      || configs[:pass]
+      @__vhost         = configs[:vhost]         || "/"
+      @__exchange_type = configs[:exchange_type] || :direct
+      @__exchange_name = configs[:exchange_name] || ""
+      @__queue_name    = configs[:queue]
 
       logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
 
@@ -105,6 +107,10 @@ module Fleck
       return @__exchange
     end
 
+    def publisher
+      return @__publisher
+    end
+
     def subscription
       return @__subscription
     end
@@ -133,8 +139,13 @@ module Fleck
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
       @__channel  = @__connection.create_channel
       @__channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
-      @__queue    = @__channel.queue(@__queue_name, auto_delete: false)
-      @__exchange = @__channel.default_exchange
+      @__publisher = @__channel.default_exchange
+      if @__exchange_type == :direct && @__exchange_name == ""
+        @__queue = @__channel.queue(@__queue_name, auto_delete: false)
+      else
+        @__exchange  = Bunny::Exchange.new(@__channel, @__exchange_type, @__exchange_name)
+        @__queue = @__channel.queue("", exclusive: true, auto_delete: true).bind(@__exchange, routing_key: @__queue_name)
+      end
     end
 
     def subscribe!
@@ -168,7 +179,7 @@ module Fleck
           if @__channel.closed?
             logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
           else
-            @__exchange.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__publisher.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
             @__channel.ack(delivery_info.delivery_tag)
           end
         end

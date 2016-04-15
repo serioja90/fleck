@@ -1,4 +1,15 @@
-# CHANGELOG
+# CHANGELOG #
+
+## develop ##
+
+## v0.4.0 (15 April 2016) ##
+  - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.
+  - **FIX** Use `auto_delete` queue for `Fleck::Client`, so that it is deleted when the client is terminated.
+  - **NEW** Add `:rmq_options` option to `Fleck::Client::Request`, which can be used to pass options like `:persistent`, `mandatory`, etc. 
+            to RabbitMQ message on publish.
+  - **NEW** Store `:headers` attribute of `Fleck::Client::Request` into RabbitMQ message `:headers`, so that in the future only
+            `:params` option will be converted to JSON.
+  - **NEW** Add `:action` option to `Fleck::Client::Request`, which will replace the action passed within `:headers` hash.
 
 ## v0.3.0 (1 April 2016)
   - **FIX** Use `:compat` mode when using `Oj` gem to dump/load JSON content.

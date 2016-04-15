@@ -5,18 +5,13 @@ module Fleck
 
     attr_reader :id, :response, :completed
 
-    def initialize(client, routing_key, reply_to, headers: {}, params: {}, timeout: nil, &callback)
+    def initialize(client, routing_key, reply_to, action: nil, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
       logger.debug "Preparing new request"
 
       @client      = client
-      @routing_key = routing_key
-      @reply_to    = reply_to
-      @params      = params
-      @headers     = headers
-      @timeout     = timeout
       @response    = nil
       @lock        = Mutex.new
       @condition   = ConditionVariable.new
@@ -25,6 +20,23 @@ module Fleck
       @ended_at    = nil
       @completed   = false
       @async       = false
+
+      @options = {
+        routing_key:      routing_key,
+        reply_to:         reply_to,
+        correlation_id:   @id,
+        type:             action || headers[:action] || headers['action'],
+        headers:          headers,
+        mandatory:        rmq_options[:mandatory]  || true,
+        persistent:       rmq_options[:persistent] || false,
+        content_type:     'application/json',
+        content_encoding: 'UTF-8'
+      }
+      @options[:priority]   = rmq_options[:priority] unless rmq_options[:priority].nil?
+      @options[:app_id]     = rmq_options[:app_id]   unless rmq_options[:app_id].nil?
+      @options[:expiration] = (timeout * 1000).to_i  unless timeout.nil?
+
+      @message = Oj.dump({headers: headers, params: params}, mode: :compat)
 
       logger.debug "Request prepared"
     end
@@ -40,16 +52,9 @@ module Fleck
     def send!(async = false)
       @started_at = Time.now.to_f
       @async = async
-      data = Oj.dump({
-        headers: @headers,
-        params:  @params
-      }, mode: :compat)
-      logger.debug("Sending request with data: #{data}")
+      logger.debug("Sending request with (options: #{@options}, message: #{@message})")
 
-      options = { routing_key: @routing_key, reply_to: @reply_to, correlation_id: @id, mandatory: true }
-      options[:expiration] = (@timeout * 1000).to_i unless @timeout.nil?
-
-      @client.publish(data, options)
+      @client.publish(@message, @options)
 
       @lock.synchronize do
         unless @async || @completed
