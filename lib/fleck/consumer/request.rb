@@ -12,7 +12,7 @@ module Fleck
       @metadata = metadata
       @payload  = payload
       @data     = {}
-      @headers  = @metadata.headers.to_hash_with_indifferent_access
+      @headers  = (@metadata.headers || {}).to_hash_with_indifferent_access
       @action   = @metadata.type
       @params   = {}
       @status   = 200
