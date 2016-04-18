@@ -1,6 +1,7 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Add process ID to logs, so that if you have multiple instances of the same application writting to the same log file, you'll be able to filter logs by process ID. Also changed logs format.
 
 ## v0.4.0 (15 April 2016) ##
   - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.
