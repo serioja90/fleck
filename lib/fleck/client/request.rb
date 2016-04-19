@@ -110,6 +110,10 @@ module Fleck
       end
     end
 
+    def expired?
+      return @expired
+    end
+
     protected
 
     def deprecated!

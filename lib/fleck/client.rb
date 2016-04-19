@@ -90,7 +90,6 @@ module Fleck
           request = @requests[metadata[:correlation_id]]
           if request
             request.cancel!
-            @requests.delete metadata[:correlation_id]
           end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
