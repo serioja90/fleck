@@ -30,7 +30,7 @@ class MyConsumer < Fleck::Consumer
   end
 
   def hello
-    version = request.headers[:version] || 'v1'
+    version = request.version || 'v1'
     case version.to_s
     when 'v1' then hello_v1
     when 'v2' then hello_v2
@@ -52,6 +52,6 @@ class MyConsumer < Fleck::Consumer
 end
 
 SAMPLES.to_i.times do |num|
-  response = client.request(action: 'hello', headers: {version: (rand >= 0.5 ? 'v2' : 'v1')}, params: {num: num}, timeout: 5)
+  response = client.request(action: 'hello', version: (rand >= 0.5 ? 'v2' : 'v1'), params: {num: num}, timeout: 5)
   puts (response.deprecated? ? "DEPRECATED: #{response.body}" : response.body)
 end
