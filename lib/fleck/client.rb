@@ -30,47 +30,40 @@ module Fleck
     end
 
     def request(action: nil, version: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
+
       if @terminated
         return Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       end
 
-      request = Fleck::Client::Request.new(self, queue, @reply_queue.name, action: action, version: version, headers: headers, params: params, timeout: timeout, rmq_options: rmq_options, &block)
-      @requests[request.id] = request
-      if timeout && !async
-        begin
-          Timeout.timeout(timeout.to_f) do
-            request.send!(false)
-          end
-        rescue Timeout::Error
-          logger.warn "Failed to get any response in #{timeout} seconds for request #{request.id.to_s.color(:red)}! The request will be canceled."
-          request.cancel!
-          @requests.delete request.id
-        end
-      elsif timeout && async
-        request.send!(async)
-        Ztimer.after(timeout * 1000) do |slot|
-          if @multiple_responses && !request.response.nil?
-            request.complete!
-            @requests.delete request.id
-          end
+      request = Fleck::Client::Request.new(
+        self, queue, @reply_queue.name,
+        action:             action,
+        version:            version,
+        headers:            headers,
+        params:             params,
+        timeout:            timeout,
+        multiple_responses: @multiple_responses,
+        rmq_options:        rmq_options,
+        &block
+      )
 
-          unless request.completed
-            logger.warn "TIMEOUT #{request.id} (#{((slot.executed_at - slot.enqueued_at) / 1000.to_f).round(2)} ms)"
-            request.cancel!
-            @requests.delete request.id
-          end
-        end
-      else
-        request.send!(async)
-      end
+      @requests[request.id] = request
+      request.send!(async)
 
       return request.response
     end
+
 
     def publish(data, options)
       return if @terminated
       @mutex.synchronize { @publisher.publish(data, options) }
     end
+
+
+    def remove_request(request_id)
+      @requests.delete request_id
+    end
+
 
     def terminate
       @terminated = true
@@ -97,7 +90,6 @@ module Fleck
           request = @requests[metadata[:correlation_id]]
           if request
             request.cancel!
-            @requests.delete metadata[:correlation_id]
           end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
@@ -109,10 +101,9 @@ module Fleck
       @subscriptions << @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
-          request = @multiple_responses ? @requests[metadata[:correlation_id]] : @requests.delete(metadata[:correlation_id])
+          request = @requests[metadata[:correlation_id]]
           if request
             request.response = Fleck::Client::Response.new(payload)
-            request.complete! unless @multiple_responses
           else
             logger.warn "Request #{metadata[:correlation_id]} not found!"
           end

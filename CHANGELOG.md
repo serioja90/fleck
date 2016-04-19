@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented `#expired?` method for `Fleck::Client::Request`, that tells if the request is expired or not. It makes possible to
+            distinguish service unavailable responses from expired requests.
   - **NEW** Added `:concurrency` option to `Fleck::Client`, that allows to specify the concurrency level for responses parsing.
   - **NEW** Add `:version` option to `Fleck::Client#request` and implement `#version` method for `Fleck::Consumer::Request`.
   - **NEW** Implemented `#request` and `#response` methods for `Fleck::Consumer`, so that you don't have to pass them as argument every time you
