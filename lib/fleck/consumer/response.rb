@@ -9,12 +9,13 @@ module Fleck
       @id = request_id
       logger.progname += " #{@id}"
 
-      @status   = 200
-      @errors   = []
-      @headers  = {}
-      @body     = nil
-      @rejected = false
-      @requeue  = false
+      @status     = 200
+      @errors     = []
+      @headers    = {}
+      @body       = nil
+      @rejected   = false
+      @requeue    = false
+      @deprecated = false
     end
 
     def reject!(requeue: false)
@@ -28,6 +29,10 @@ module Fleck
 
     def requeue?
       return @requeue
+    end
+
+    def deprecated!
+      @deprecated = true
     end
 
     def not_found(msg = nil)
@@ -47,10 +52,11 @@ module Fleck
 
     def to_json
       return Oj.dump({
-        "status"  => @status,
-        "errors"  => @errors,
-        "headers" => @headers,
-        "body"    => @body
+        "status"     => @status,
+        "errors"     => @errors,
+        "headers"    => @headers,
+        "body"       => @body,
+        "deprecated" => @deprecated
       }, mode: :compat)
     rescue => e
       logger.error e.inspect + "\n" + e.backtrace.join("\n")

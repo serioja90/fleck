@@ -1,8 +1,15 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented `#request` and `#response` methods for `Fleck::Consumer`, so that you don't have to pass them as argument every time you
+            delegate the logic to a different method.
+  - **NEW** Implemented the feature that allows to deprecate actions within a consumer. Now you can call `deprecated!` inside a consumer to
+            reply with a response that is marked as **deprecated**.
   - **NEW** Add `app_name` configuration, that allows to configure the default `app_id` to set for RabbitMQ messages.
   - **NEW** Add process ID to logs, so that if you have multiple instances of the same application writting to the same log file, you'll be able to filter logs by process ID. Also changed logs format.
+
+## v0.4.1 (18 April 2016) ##
+  - **FIX** Fixed a bug of `Fleck::Consumer::Request` class, that was causing errors when RabbitMQ message header wasn't set.
 
 ## v0.4.0 (15 April 2016) ##
   - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.

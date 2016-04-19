@@ -20,12 +20,15 @@ module Fleck
       @ended_at    = nil
       @completed   = false
       @async       = false
+      @action      = action || headers[:action] || headers['action']
+      @version     = headers[:version] || headers['version'] || 'v1'
+      @routing_key = routing_key
 
       @options = {
-        routing_key:      routing_key,
+        routing_key:      @routing_key,
         reply_to:         reply_to,
         correlation_id:   @id,
-        type:             action || headers[:action] || headers['action'],
+        type:             action,
         headers:          headers,
         mandatory:        rmq_options[:mandatory]  || true,
         persistent:       rmq_options[:persistent] || false,
@@ -45,6 +48,7 @@ module Fleck
       logger.debug "Response: #{value.inspect}"
       raise ArgumentError.new("Invalid response type: #{value.class}") unless value.is_a?(Fleck::Client::Response)
       @response = value
+      deprecated! if @response.deprecated?
       @callback.call(self, value) if @callback
       return value
     end
@@ -78,6 +82,12 @@ module Fleck
       logger.warn "Request canceled!"
       self.response = Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       complete!
+    end
+
+    protected
+
+    def deprecated!
+      logger.warn("DEPRECATION: the method `#{@action}` of version '#{@version}' on queue '#{@routing_key}' is going to be deprecated. Please, consider using a newer version of this method.")
     end
   end
 end
