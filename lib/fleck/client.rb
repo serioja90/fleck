@@ -3,12 +3,14 @@ module Fleck
   class Client
     include Fleck::Loggable
 
-    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false)
+    def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false, concurrency: 1)
       @connection         = connection
       @queue_name         = queue_name
       @multiple_responses = multiple_responses
       @default_timeout    = multiple_responses ? 60 : nil
+      @concurrency        = [concurrency.to_i, 1].max
       @requests           = ThreadSafe::Hash.new
+      @subscriptions      = ThreadSafe::Array.new
       @terminated         = false
       @mutex              = Mutex.new
 
@@ -18,7 +20,7 @@ module Fleck
       @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
 
       handle_returned_messages!
-      handle_responses!
+      @concurrency.times { handle_responses! }
 
       logger.debug("Client initialized!")
 
@@ -73,7 +75,7 @@ module Fleck
     def terminate
       @terminated = true
       logger.info "Unsubscribing from #{@reply_queue.name}"
-      @subscription.cancel # stop receiving new messages
+      @subscriptions.map(&:cancel) # stop receiving new messages
       logger.info "Canceling pending requests"
       # cancel pending requests
       while item = @requests.shift do
@@ -104,7 +106,7 @@ module Fleck
     end
 
     def handle_responses!
-      @subscription = @reply_queue.subscribe do |delivery_info, metadata, payload|
+      @subscriptions << @reply_queue.subscribe do |delivery_info, metadata, payload|
         begin
           logger.debug "Response received: #{payload}"
           request = @multiple_responses ? @requests[metadata[:correlation_id]] : @requests.delete(metadata[:correlation_id])

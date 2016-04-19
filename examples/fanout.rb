@@ -1,10 +1,13 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
 require 'fleck'
 
 user        = ENV['USER']        || 'guest'
 pass        = ENV['PASS']        || 'guest'
 
 CONCURRENCY = (ENV['CONCURRENCY'] || 10).to_i
-SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
+SAMPLES     = (ENV['SAMPLES']     || 1_000).to_i
 
 Fleck.configure do |config|
   config.default_user = user
@@ -13,7 +16,7 @@ Fleck.configure do |config|
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "example.queue")
+client = Fleck::Client.new(connection, "example.queue", concurrency: CONCURRENCY.to_i, exchange_type: :fanout, exchange_name: 'fanout.example.queue', multiple_responses: true)
 
 count   = 0
 success = 0
@@ -24,30 +27,21 @@ lock  = Mutex.new
 condition = ConditionVariable.new
 
 class First < Fleck::Consumer
-  configure queue: "example.queue", concurrency: CONCURRENCY.to_i
+  configure queue: "example.queue", concurrency: CONCURRENCY.to_i, exchange_type: :fanout, exchange_name: 'fanout.example.queue'
 
   def on_message(request, response)
-    if rand > 0.1
-      if request.action == "incr"
-        response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
-      else
-        response.not_found
-      end
+    if request.action == "incr"
+      response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
     else
-      logger.warn "REJECTING REQUEST {headers: #{request.headers}, params: #{request.params}"
-      response.reject!(requeue: true)
+      response.not_found
     end
   end
 end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0)}) do |request, response|
-      if response.status == 200
-        request.logger.debug response.body
-      else
-        request.logger.error "#{response.status} #{response.errors.join(", ")}"
-      end
+    client.request(action: 'incr', params: {num: i}, timeout: 60) do |request, response|
+      request.logger.debug response.body
       mutex.synchronize do
         count += 1
         if response.status == 200
@@ -68,5 +62,3 @@ end
 
 lock.synchronize { condition.wait(lock) }
 exit
-
-#First.consumers.map(&:terminate)
