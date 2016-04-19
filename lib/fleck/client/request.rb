@@ -3,7 +3,7 @@ module Fleck
   class Client::Request
     include Fleck::Loggable
 
-    attr_reader :id, :response, :completed
+    attr_reader :id, :response, :completed, :expired
 
     def initialize(client, routing_key, reply_to, action: nil, version: nil, headers: {}, params: {}, timeout: nil, multiple_responses: false, rmq_options: {}, &callback)
       @id              = SecureRandom.uuid
@@ -97,8 +97,6 @@ module Fleck
     end
 
     def expire!
-      #@ztimer_slot.cancel! if @ztimer_slot
-
       if @multiple_responses
         if @completed
           complete!
