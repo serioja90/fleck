@@ -172,7 +172,7 @@ module Fleck
       @__subscription = @__queue.subscribe(options) do |delivery_info, metadata, payload|
         @__response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
-          @__request  = Fleck::Consumer::Request.new(metadata, payload)
+          @__request  = Fleck::Consumer::Request.new(metadata, payload, delivery_info)
           if @__request.errors.empty?
             on_message(@__request, @__response)
           else
