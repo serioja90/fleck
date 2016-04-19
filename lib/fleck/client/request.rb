@@ -5,24 +5,28 @@ module Fleck
 
     attr_reader :id, :response, :completed
 
-    def initialize(client, routing_key, reply_to, action: nil, version: nil, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
+    def initialize(client, routing_key, reply_to, action: nil, version: nil, headers: {}, params: {}, timeout: nil, multiple_responses: false, rmq_options: {}, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
       logger.debug "Preparing new request"
 
-      @client      = client
-      @response    = nil
-      @lock        = Mutex.new
-      @condition   = ConditionVariable.new
-      @callback    = callback
-      @started_at  = nil
-      @ended_at    = nil
-      @completed   = false
-      @async       = false
-      @action      = action  || headers[:action]  || headers['action']
-      @version     = version || headers[:version] || headers['version']
-      @routing_key = routing_key
+      @client             = client
+      @response           = nil
+      @lock               = Mutex.new
+      @condition          = ConditionVariable.new
+      @callback           = callback
+      @started_at         = nil
+      @ended_at           = nil
+      @completed          = false
+      @async              = false
+      @action             = action  || headers[:action]  || headers['action']
+      @version            = version || headers[:version] || headers['version']
+      @routing_key        = routing_key
+      @timeout            = (timeout * 1000).to_i unless timeout.nil?
+      @multiple_responses = multiple_responses
+      @ztimer_slot        = nil
+      @expired            = false
 
       headers[:version] = @version
 
@@ -39,7 +43,7 @@ module Fleck
       }
       @options[:priority]   = rmq_options[:priority] unless rmq_options[:priority].nil?
       @options[:app_id]     = rmq_options[:app_id] || Fleck.config.app_name
-      @options[:expiration] = (timeout * 1000).to_i  unless timeout.nil?
+      @options[:expiration] = @timeout
 
       @message = Oj.dump({headers: headers, params: params}, mode: :compat)
 
@@ -52,6 +56,7 @@ module Fleck
       @response = value
       deprecated! if @response.deprecated?
       @callback.call(self, value) if @callback
+      complete! unless @multiple_responses
       return value
     end
 
@@ -59,6 +64,10 @@ module Fleck
       @started_at = Time.now.to_f
       @async = async
       logger.debug("Sending request with (options: #{@options}, message: #{@message})")
+
+      if @timeout
+        @ztimer_slot = Ztimer.after(@timeout){ expire! }
+      end
 
       @client.publish(@message, @options)
 
@@ -72,18 +81,35 @@ module Fleck
     end
 
     def complete!
+      @ztimer_slot.cancel! if @ztimer_slot
       @lock.synchronize do
         @completed = true
         @ended_at  = Time.now.to_f
         logger.debug "Done #{@async ? 'async' : 'synchronized'} in #{((@ended_at - @started_at).round(5) * 1000).round(2)} ms"
         @condition.signal unless @async
+        @client.remove_request(@id)
       end
     end
 
     def cancel!
       logger.warn "Request canceled!"
       self.response = Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
-      complete!
+    end
+
+    def expire!
+      #@ztimer_slot.cancel! if @ztimer_slot
+
+      if @multiple_responses
+        if @completed
+          complete!
+        else
+          @expired = true
+          cancel!
+        end
+      elsif !@completed
+        @expired = true
+        cancel!
+      end
     end
 
     protected
