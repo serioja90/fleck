@@ -16,7 +16,7 @@ Fleck.configure do |config|
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "deprecation.example.queue")
+client = Fleck::Client.new(connection, "deprecation.example.queue", concurrency: CONCURRENCY.to_i)
 
 class MyConsumer < Fleck::Consumer
   configure queue: 'deprecation.example.queue', concurrency: CONCURRENCY.to_i
