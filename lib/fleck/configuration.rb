@@ -3,12 +3,13 @@ module Fleck
   class Configuration
 
     attr_reader :logfile, :loglevel, :progname
-    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue
+    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue, :app_name
 
     def initialize
       @logfile       = STDOUT
       @loglevel      = ::Logger::INFO
       @progname      = "Fleck"
+      @app_name      = $0
       @default_host  = "127.0.0.1"
       @default_port  = 5672
       @default_user  = nil

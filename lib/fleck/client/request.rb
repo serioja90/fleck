@@ -33,7 +33,7 @@ module Fleck
         content_encoding: 'UTF-8'
       }
       @options[:priority]   = rmq_options[:priority] unless rmq_options[:priority].nil?
-      @options[:app_id]     = rmq_options[:app_id]   unless rmq_options[:app_id].nil?
+      @options[:app_id]     = rmq_options[:app_id] || Fleck.config.app_name
       @options[:expiration] = (timeout * 1000).to_i  unless timeout.nil?
 
       @message = Oj.dump({headers: headers, params: params}, mode: :compat)
