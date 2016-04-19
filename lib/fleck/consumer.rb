@@ -2,7 +2,7 @@
 module Fleck
   class Consumer
     class << self
-      attr_accessor :logger, :configs, :actions_map, :consumers
+      attr_accessor :logger, :configs, :actions_map, :consumers, :initialize_block
     end
 
     def self.inherited(subclass)
@@ -32,6 +32,10 @@ module Fleck
 
     def self.register_action(action, method_name)
       self.actions_map[action.to_s] = method_name.to_s
+    end
+
+    def self.initialize(&block)
+      self.initialize_block = block
     end
 
     def self.init_consumer(subclass)
@@ -75,6 +79,10 @@ module Fleck
       @__exchange_type = configs[:exchange_type] || :direct
       @__exchange_name = configs[:exchange_name] || ""
       @__queue_name    = configs[:queue]
+
+      if self.class.initialize_block
+        self.instance_eval(&self.class.initialize_block)
+      end
 
       logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
 
