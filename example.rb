@@ -42,7 +42,7 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: {app_id: 'My App', priority: (rand * 9).round(0)}) do |request, response|
+    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0)}) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else
