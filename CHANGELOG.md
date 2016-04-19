@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented the feature that allows to define an initialization block for `Fleck::Consumer`. This feature should be used to initialize consumer instance
+            variables so that it is not necessary to overwrite `Fleck::Consumer#initialize` method.
   - **NEW** Implemented the feature that allows to define a map of actions to consumer methods, so that requests actions are automatically mapped to
             consumer methods.
   - **NEW** Implemented `#expired?` method for `Fleck::Client::Request`, that tells if the request is expired or not. It makes possible to
