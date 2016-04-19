@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Added `:autostart` option to `Fleck::Consumer` configuration, so that the developer could decide to start the consumer manually or automatically. By default
+            the consumer will start automatically.
   - **NEW** Implemented the feature that allows to define an initialization block for `Fleck::Consumer`. This feature should be used to initialize consumer instance
             variables so that it is not necessary to overwrite `Fleck::Consumer#initialize` method.
   - **NEW** Implemented the feature that allows to define a map of actions to consumer methods, so that requests actions are automatically mapped to
