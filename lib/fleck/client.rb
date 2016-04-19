@@ -27,12 +27,12 @@ module Fleck
       end
     end
 
-    def request(action: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
+    def request(action: nil, version: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
       if @terminated
         return Fleck::Client::Response.new(Oj.dump({status: 503, errors: ['Service Unavailable'], body: nil} , mode: :compat))
       end
 
-      request = Fleck::Client::Request.new(self, queue, @reply_queue.name, action: action, headers: headers, params: params, timeout: timeout, rmq_options: rmq_options, &block)
+      request = Fleck::Client::Request.new(self, queue, @reply_queue.name, action: action, version: version, headers: headers, params: params, timeout: timeout, rmq_options: rmq_options, &block)
       @requests[request.id] = request
       if timeout && !async
         begin

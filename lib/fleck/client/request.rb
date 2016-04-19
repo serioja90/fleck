@@ -5,7 +5,7 @@ module Fleck
 
     attr_reader :id, :response, :completed
 
-    def initialize(client, routing_key, reply_to, action: nil, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
+    def initialize(client, routing_key, reply_to, action: nil, version: nil, headers: {}, params: {}, timeout: nil, rmq_options: {}, &callback)
       @id              = SecureRandom.uuid
       logger.progname += " #{@id}"
 
@@ -20,9 +20,11 @@ module Fleck
       @ended_at    = nil
       @completed   = false
       @async       = false
-      @action      = action || headers[:action] || headers['action']
-      @version     = headers[:version] || headers['version'] || 'v1'
+      @action      = action  || headers[:action]  || headers['action']
+      @version     = version || headers[:version] || headers['version']
       @routing_key = routing_key
+
+      headers[:version] = @version
 
       @options = {
         routing_key:      @routing_key,
@@ -87,7 +89,7 @@ module Fleck
     protected
 
     def deprecated!
-      logger.warn("DEPRECATION: the method `#{@action}` of version '#{@version}' on queue '#{@routing_key}' is going to be deprecated. Please, consider using a newer version of this method.")
+      logger.warn("DEPRECATION: the method `#{@action}` of version '#{@version.inspect}' on queue '#{@routing_key}' is going to be deprecated. Please, consider using a newer version of this method.")
     end
   end
 end
