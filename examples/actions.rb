@@ -16,10 +16,10 @@ Fleck.configure do |config|
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "deprecation.example.queue", concurrency: CONCURRENCY.to_i)
+client = Fleck::Client.new(connection, "actions.example.queue", concurrency: CONCURRENCY.to_i)
 
 class MyConsumer < Fleck::Consumer
-  configure queue: 'deprecation.example.queue', concurrency: CONCURRENCY.to_i
+  configure queue: 'actions.example.queue', concurrency: CONCURRENCY.to_i
   actions :hello, ciao: 'my_custom_method', aloha: 'my_aloha'
 
   def hello
