@@ -1,6 +1,7 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Add `:version` option to `Fleck::Client#request` and implement `#version` method for `Fleck::Consumer::Request`.
   - **NEW** Implemented `#request` and `#response` methods for `Fleck::Consumer`, so that you don't have to pass them as argument every time you
             delegate the logic to a different method.
   - **NEW** Implemented the feature that allows to deprecate actions within a consumer. Now you can call `deprecated!` inside a consumer to
