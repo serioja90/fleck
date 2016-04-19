@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented the feature that allows to define a map of actions to consumer methods, so that requests actions are automatically mapped to
+            consumer methods.
   - **NEW** Implemented `#expired?` method for `Fleck::Client::Request`, that tells if the request is expired or not. It makes possible to
             distinguish service unavailable responses from expired requests.
   - **NEW** Added `:concurrency` option to `Fleck::Client`, that allows to specify the concurrency level for responses parsing.
