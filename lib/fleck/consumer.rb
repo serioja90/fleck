@@ -2,7 +2,7 @@
 module Fleck
   class Consumer
     class << self
-      attr_accessor :logger, :configs, :consumers
+      attr_accessor :logger, :configs, :actions_map, :consumers
     end
 
     def self.inherited(subclass)
@@ -17,14 +17,32 @@ module Fleck
       logger.debug "Consumer configurations updated."
     end
 
+    def self.actions(*args)
+      args.each do |item|
+        case item
+        when Hash
+          item.each do |k,v|
+            self.register_action(k.to_s, v.to_s)
+          end
+        else
+          self.register_action(item.to_s, item.to_s)
+        end
+      end
+    end
+
+    def self.register_action(action, method_name)
+      self.actions_map[action.to_s] = method_name.to_s
+    end
+
     def self.init_consumer(subclass)
       subclass.logger          = Fleck.logger.clone
       subclass.logger.progname = subclass.to_s
 
       subclass.logger.debug "Setting defaults for #{subclass.to_s.color(:yellow)} consumer"
 
-      subclass.configs   = Fleck.config.default_options
-      subclass.consumers = []
+      subclass.configs     = Fleck.config.default_options
+      subclass.actions_map = {}
+      subclass.consumers   = []
     end
 
     def self.autostart(subclass)
@@ -70,7 +88,12 @@ module Fleck
     end
 
     def on_message(request, response)
-      raise NotImplementedError.new("You must implement #on_message(delivery_info, metadata, payload) method")
+      method_name = actions[request.action.to_s]
+      if method_name
+        self.send(method_name)
+      else
+        response.not_found
+      end
     end
 
     def terminate
@@ -91,6 +114,10 @@ module Fleck
 
     def configs
       @configs ||= self.class.configs
+    end
+
+    def actions
+      @actions ||= self.class.actions_map
     end
 
     def connection
