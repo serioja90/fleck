@@ -38,6 +38,12 @@ module Fleck
       self.initialize_block = block
     end
 
+    def self.start
+      self.consumers.each do |consumer|
+        consumer.start
+      end
+    end
+
     def self.init_consumer(subclass)
       subclass.logger          = Fleck.logger.clone
       subclass.logger.progname = subclass.to_s
@@ -45,6 +51,7 @@ module Fleck
       subclass.logger.debug "Setting defaults for #{subclass.to_s.color(:yellow)} consumer"
 
       subclass.configs     = Fleck.config.default_options
+      subclass.configs[:autostart] = true if subclass.configs[:autostart].nil?
       subclass.actions_map = {}
       subclass.consumers   = []
     end
@@ -79,6 +86,7 @@ module Fleck
       @__exchange_type = configs[:exchange_type] || :direct
       @__exchange_name = configs[:exchange_name] || ""
       @__queue_name    = configs[:queue]
+      @__autostart     = configs[:autostart]
 
       if self.class.initialize_block
         self.instance_eval(&self.class.initialize_block)
@@ -86,13 +94,17 @@ module Fleck
 
       logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
 
-      connect!
-      create_channel!
-      subscribe!
+      start if @__autostart
 
       at_exit do
         terminate
       end
+    end
+
+    def start
+      connect!
+      create_channel!
+      subscribe!
     end
 
     def on_message(request, response)
@@ -106,8 +118,8 @@ module Fleck
 
     def terminate
       pause
-      unless @__channel.closed?
-        @__channel.close
+      unless channel.nil? || channel.closed?
+        channel.close
         logger.info "Consumer successfully terminated."
       end
     end
@@ -153,8 +165,10 @@ module Fleck
     end
 
     def pause
-      cancel_ok = @__subscription.cancel
-      @__consumer_tag = cancel_ok.consumer_tag
+      if subscription
+        cancel_ok = subscription.cancel
+        @__consumer_tag = cancel_ok.consumer_tag
+      end
     end
 
     def resume
