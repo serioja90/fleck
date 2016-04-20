@@ -98,11 +98,11 @@ module Fleck
 
     def expire!
       if @multiple_responses
-        if @completed
-          complete!
-        else
+        if @response.nil?
           @expired = true
           cancel!
+        else
+          complete!
         end
       elsif !@completed
         @expired = true
