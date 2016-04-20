@@ -148,20 +148,19 @@ To use `Fleck::Consumer` all you need is to inherit it by an another class:
 class MyConsumer < Fleck::Consumer
   configure queue: 'my.queue', concurrency: 2
 
-  def on_message(request, response)
-    logger.debug "HEADERS: #{request.headers}"
-    logger.debug "PARAMS: #{request.params}"
+  actions :random
 
-    case request.action
-    when 'random'
-      if rand > 0.1
-        response.status = 200
-        response.body = {x: rand, y: rand}
-      else
-        response.render_error(500, 'Internal Server Error (just a joke)')
-      end
+  initialize do
+    # initialization stuff
+    @my_message = "Hi! :)"
+  end
+
+  def random
+    if rand > 0.1
+      response.status = 200 # this is not strictly necessary (200 is the default status)
+      response.body = {x: rand, y: rand, message: @my_message}
     else
-      response.not_found
+      response.render_error(500, 'Internal Server Error (just a joke)')
     end
   end
 end
@@ -183,16 +182,10 @@ can specify it in consumer configuration.
 class MyConsumer < Fleck::Consumer
   configure queue: '', concurrency: 1, exchange_type: :fanout, exchange_name: 'my.fanout.exchange'
 
-  def on_message(request, response)
-    logger.debug "HEADERS: #{request.headers}"
-    logger.debug "PARAMS: #{request.params}"
+  actions :status
 
-    case request.action
-    when 'status'
-      response.body = {status: 'up & running'}
-    else
-      response.not_found
-    end
+  def status
+    response.body = {status: 'up & running'}
   end
 end
 ```
