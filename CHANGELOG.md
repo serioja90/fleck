@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+
+## v0.5.0 (20 April 2016) ##
   - **NEW** Added `:autostart` option to `Fleck::Consumer` configuration, so that the developer could decide to start the consumer manually or automatically. By default
             the consumer will start automatically.
   - **NEW** Implemented the feature that allows to define an initialization block for `Fleck::Consumer`. This feature should be used to initialize consumer instance
