@@ -2,7 +2,7 @@
 module Fleck
   class Consumer
     class << self
-      attr_accessor :logger, :configs, :consumers
+      attr_accessor :logger, :configs, :actions_map, :consumers, :initialize_block
     end
 
     def self.inherited(subclass)
@@ -17,14 +17,43 @@ module Fleck
       logger.debug "Consumer configurations updated."
     end
 
+    def self.actions(*args)
+      args.each do |item|
+        case item
+        when Hash
+          item.each do |k,v|
+            self.register_action(k.to_s, v.to_s)
+          end
+        else
+          self.register_action(item.to_s, item.to_s)
+        end
+      end
+    end
+
+    def self.register_action(action, method_name)
+      self.actions_map[action.to_s] = method_name.to_s
+    end
+
+    def self.initialize(&block)
+      self.initialize_block = block
+    end
+
+    def self.start
+      self.consumers.each do |consumer|
+        consumer.start
+      end
+    end
+
     def self.init_consumer(subclass)
       subclass.logger          = Fleck.logger.clone
       subclass.logger.progname = subclass.to_s
 
       subclass.logger.debug "Setting defaults for #{subclass.to_s.color(:yellow)} consumer"
 
-      subclass.configs   = Fleck.config.default_options
-      subclass.consumers = []
+      subclass.configs     = Fleck.config.default_options
+      subclass.configs[:autostart] = true if subclass.configs[:autostart].nil?
+      subclass.actions_map = {}
+      subclass.consumers   = []
     end
 
     def self.autostart(subclass)
@@ -46,6 +75,8 @@ module Fleck
       @__thread_id    = thread_id
       @__connection   = nil
       @__consumer_tag = nil
+      @__request      = nil
+      @__response     = nil
 
       @__host          = configs[:host]
       @__port          = configs[:port]
@@ -55,26 +86,40 @@ module Fleck
       @__exchange_type = configs[:exchange_type] || :direct
       @__exchange_name = configs[:exchange_name] || ""
       @__queue_name    = configs[:queue]
+      @__autostart     = configs[:autostart]
+
+      if self.class.initialize_block
+        self.instance_eval(&self.class.initialize_block)
+      end
 
       logger.info "Launching #{self.class.to_s.color(:yellow)} consumer ..."
 
-      connect!
-      create_channel!
-      subscribe!
+      start if @__autostart
 
       at_exit do
         terminate
       end
     end
 
+    def start
+      connect!
+      create_channel!
+      subscribe!
+    end
+
     def on_message(request, response)
-      raise NotImplementedError.new("You must implement #on_message(delivery_info, metadata, payload) method")
+      method_name = actions[request.action.to_s]
+      if method_name
+        self.send(method_name)
+      else
+        response.not_found
+      end
     end
 
     def terminate
       pause
-      unless @__channel.closed?
-        @__channel.close
+      unless channel.nil? || channel.closed?
+        channel.close
         logger.info "Consumer successfully terminated."
       end
     end
@@ -89,6 +134,10 @@ module Fleck
 
     def configs
       @configs ||= self.class.configs
+    end
+
+    def actions
+      @actions ||= self.class.actions_map
     end
 
     def connection
@@ -116,12 +165,27 @@ module Fleck
     end
 
     def pause
-      cancel_ok = @__subscription.cancel
-      @__consumer_tag = cancel_ok.consumer_tag
+      if subscription
+        cancel_ok = subscription.cancel
+        @__consumer_tag = cancel_ok.consumer_tag
+      end
     end
 
     def resume
       subscribe!
+    end
+
+    def request
+      @__request
+    end
+
+    def response
+      @__response
+    end
+
+    def deprecated!
+      logger.warn("DEPRECATION: the method `#{caller_locations(1,1)[0].label}` is going to be deprecated. Please, consider using a newer version of this method.")
+      @__response.deprecated! if @__response
     end
 
     protected
@@ -155,31 +219,31 @@ module Fleck
       options[:consumer_tag] = @__consumer_tag if @__consumer_tag
 
       @__subscription = @__queue.subscribe(options) do |delivery_info, metadata, payload|
-        response = Fleck::Consumer::Response.new(metadata.correlation_id)
+        @__response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
-          request  = Fleck::Consumer::Request.new(metadata, payload)
-          if request.errors.empty?
-            on_message(request, response)
+          @__request  = Fleck::Consumer::Request.new(metadata, payload, delivery_info)
+          if @__request.errors.empty?
+            on_message(@__request, @__response)
           else
-            response.status = request.status
-            response.errors += request.errors
+            @__response.status = @__request.status
+            @__response.errors += @__request.errors
           end
         rescue => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
-          response.status = 500
-          response.errors << 'Internal Server Error'
+          @__response.status = 500
+          @__response.errors << 'Internal Server Error'
         end
 
-        if response.rejected?
+        if @__response.rejected?
           # the request was rejected, so we have to notify the reject
-          logger.warn "Request #{response.id} was rejected!"
-          @__channel.reject(delivery_info.delivery_tag, response.requeue?)
+          logger.warn "Request #{@__response.id} was rejected!"
+          @__channel.reject(delivery_info.delivery_tag, @__response.requeue?)
         else
-          logger.debug "Sending response: #{response}"
+          logger.debug "Sending response: #{@__response}"
           if @__channel.closed?
             logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
           else
-            @__publisher.publish(response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
             @__channel.ack(delivery_info.delivery_tag)
           end
         end

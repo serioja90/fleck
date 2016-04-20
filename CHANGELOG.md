@@ -1,6 +1,25 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Added `:autostart` option to `Fleck::Consumer` configuration, so that the developer could decide to start the consumer manually or automatically. By default
+            the consumer will start automatically.
+  - **NEW** Implemented the feature that allows to define an initialization block for `Fleck::Consumer`. This feature should be used to initialize consumer instance
+            variables so that it is not necessary to overwrite `Fleck::Consumer#initialize` method.
+  - **NEW** Implemented the feature that allows to define a map of actions to consumer methods, so that requests actions are automatically mapped to
+            consumer methods.
+  - **NEW** Implemented `#expired?` method for `Fleck::Client::Request`, that tells if the request is expired or not. It makes possible to
+            distinguish service unavailable responses from expired requests.
+  - **NEW** Added `:concurrency` option to `Fleck::Client`, that allows to specify the concurrency level for responses parsing.
+  - **NEW** Add `:version` option to `Fleck::Client#request` and implement `#version` method for `Fleck::Consumer::Request`.
+  - **NEW** Implemented `#request` and `#response` methods for `Fleck::Consumer`, so that you don't have to pass them as argument every time you
+            delegate the logic to a different method.
+  - **NEW** Implemented the feature that allows to deprecate actions within a consumer. Now you can call `deprecated!` inside a consumer to
+            reply with a response that is marked as **deprecated**.
+  - **NEW** Add `app_name` configuration, that allows to configure the default `app_id` to set for RabbitMQ messages.
+  - **NEW** Add process ID to logs, so that if you have multiple instances of the same application writting to the same log file, you'll be able to filter logs by process ID. Also changed logs format.
+
+## v0.4.1 (18 April 2016) ##
+  - **FIX** Fixed a bug of `Fleck::Consumer::Request` class, that was causing errors when RabbitMQ message header wasn't set.
 
 ## v0.4.0 (15 April 2016) ##
   - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.
