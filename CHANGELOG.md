@@ -2,6 +2,10 @@
 
 ## develop ##
 
+## v0.5.1 (20 April 2016)
+  - **FIX** Don't expire requests with multiple responses if any response is received. Treat that kind of request as expired if no response has been received
+            until the request expiration.
+
 ## v0.5.0 (20 April 2016) ##
   - **NEW** Added `:autostart` option to `Fleck::Consumer` configuration, so that the developer could decide to start the consumer manually or automatically. By default
             the consumer will start automatically.
