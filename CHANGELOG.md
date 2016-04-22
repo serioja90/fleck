@@ -1,6 +1,9 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Added a filter that prevents from using reserved `Fleck::Consumer` methods as actions.
+  - **NEW** Implemented the feature that allows to start consumer in a blocking way.
+  - **NEW** Added `:prefetch` and `:mandatory` options to `Fleck::Consumer` configuration options.
 
 ## v0.5.1 (20 April 2016)
   - **FIX** Don't expire requests with multiple responses if any response is received. Treat that kind of request as expired if no response has been received
