@@ -39,3 +39,4 @@ client.request(action: 'quit', timeout: 5, async: true)
 MyConsumer.start(block: true)
 
 puts "We did it :)"
+sleep 0.01 # Give some time to Bunny to cancel subscribtions and to close channels and connections
