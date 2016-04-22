@@ -87,6 +87,8 @@ module Fleck
       @__exchange_name = configs[:exchange_name] || ""
       @__queue_name    = configs[:queue]
       @__autostart     = configs[:autostart]
+      @__prefetch      = (configs[:prefetch]      || 100).to_i
+      @__mandatory     = !!configs[:mandatory]
 
       if self.class.initialize_block
         self.instance_eval(&self.class.initialize_block)
@@ -202,7 +204,7 @@ module Fleck
 
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
       @__channel  = @__connection.create_channel
-      @__channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
+      @__channel.prefetch(@__prefetch) # consume messages in batches
       @__publisher = @__channel.default_exchange
       if @__exchange_type == :direct && @__exchange_name == ""
         @__queue = @__channel.queue(@__queue_name, auto_delete: false)
@@ -243,7 +245,7 @@ module Fleck
           if @__channel.closed?
             logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
           else
-            @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: @__mandatory)
             @__channel.ack(delivery_info.delivery_tag)
           end
         end
