@@ -38,9 +38,9 @@ module Fleck
       self.initialize_block = block
     end
 
-    def self.start
+    def self.start(block: false)
       self.consumers.each do |consumer|
-        consumer.start
+        consumer.start(block: block)
       end
     end
 
@@ -77,6 +77,8 @@ module Fleck
       @__consumer_tag = nil
       @__request      = nil
       @__response     = nil
+      @__lock         = Mutex.new
+      @__lounger      = ConditionVariable.new
 
       @__host          = configs[:host]
       @__port          = configs[:port]
@@ -103,10 +105,11 @@ module Fleck
       end
     end
 
-    def start
+    def start(block: false)
       connect!
       create_channel!
       subscribe!
+      @__lock.synchronize{ @__lounger.wait(@__lock) } if block
     end
 
     def on_message(request, response)
@@ -119,6 +122,7 @@ module Fleck
     end
 
     def terminate
+      @__lock.synchronize { @__lounger.signal }
       pause
       unless channel.nil? || channel.closed?
         channel.close
