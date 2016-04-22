@@ -210,7 +210,7 @@ module Fleck
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
       @__channel  = @__connection.create_channel
       @__channel.prefetch(@__prefetch) # consume messages in batches
-      @__publisher = @__channel.default_exchange
+      @__publisher = Bunny::Exchange.new(@__connection.create_channel, :direct, 'fleck')
       if @__exchange_type == :direct && @__exchange_name == ""
         @__queue = @__channel.queue(@__queue_name, auto_delete: false)
       else

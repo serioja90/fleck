@@ -1,6 +1,7 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Use `"fleck"` exchange for RPC simulation, so that reply queues could be used in a RabbitMQ Federation configuration.
   - **NEW** Added a filter that prevents from using reserved `Fleck::Consumer` methods as actions.
   - **NEW** Implemented the feature that allows to start consumer in a blocking way.
   - **NEW** Added `:prefetch` and `:mandatory` options to `Fleck::Consumer` configuration options.

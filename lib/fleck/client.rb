@@ -15,9 +15,10 @@ module Fleck
       @mutex              = Mutex.new
 
       @channel     = @connection.create_channel
-      @exchange    = @channel.default_exchange
-      @publisher   = Bunny::Exchange.new(@channel, exchange_type, exchange_name)
+      @exchange    = Bunny::Exchange.new(@channel, :direct, 'fleck')
+      @publisher   = Bunny::Exchange.new(@connection.create_channel, exchange_type, exchange_name)
       @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
+      @reply_queue.bind(@exchange, routing_key: @reply_queue.name)
 
       handle_returned_messages!
       @concurrency.times { handle_responses! }
