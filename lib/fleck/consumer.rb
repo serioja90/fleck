@@ -31,6 +31,7 @@ module Fleck
     end
 
     def self.register_action(action, method_name)
+      raise ArgumentError.new("Cannot use `:#{method_name}` method as an action, because it is reserved for Fleck::Consumer internal stuff!") if Fleck::Consumer.instance_methods.include?(method_name.to_s.to_sym)
       self.actions_map[action.to_s] = method_name.to_s
     end
 
