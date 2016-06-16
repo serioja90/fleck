@@ -93,6 +93,13 @@ module Fleck
       @__prefetch      = (configs[:prefetch]      || 100).to_i
       @__mandatory     = !!configs[:mandatory]
 
+      # SSL/TLS options
+      @__tls           = configs[:tls]
+      @__tls_ca_certs  = configs[:tls_ca_certs]
+      @__tls_cert      = configs[:tls_cert]
+      @__tls_key       = configs[:tls_key]
+      @__verify_peer   = configs[:verify_peer]
+
       if self.class.initialize_block
         self.instance_eval(&self.class.initialize_block)
       end
@@ -198,7 +205,18 @@ module Fleck
     protected
 
     def connect!
-      @__connection = Fleck.connection(host: @__host, port: @__port, user: @__user, pass: @__pass, vhost: @__vhost)
+      @__connection = Fleck.connection(
+        host:                @__host,
+        port:                @__port,
+        user:                @__user,
+        pass:                @__pass,
+        vhost:               @__vhost,
+        tls:                 @__tls,
+        tls_ca_certificates: @__tls_ca_certs,
+        tls_cert:            @__tls_cert,
+        tls_key:             @__tls_key,
+        verify_peer:         @__verify_peer
+      )
     end
 
     def create_channel!
