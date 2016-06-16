@@ -35,7 +35,7 @@ module Fleck
 
   def self.connection(options)
     opts = Fleck.config.default_options.merge(options)
-    key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
+    key  = "ampq#{opts[:tls] ? 's' : ''}://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
     conn = @connections[key]
     if !conn || conn.closed?
       opts[:logger] = Fleck.logger.clone
