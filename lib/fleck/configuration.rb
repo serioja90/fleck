@@ -3,29 +3,43 @@ module Fleck
   class Configuration
 
     attr_reader :logfile, :loglevel, :progname
-    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue, :app_name
+    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue, :app_name,
+                  :tls, :tls_ca_certs, :tls_cert, :tls_key, :verify_peer
 
     def initialize
-      @logfile       = STDOUT
-      @loglevel      = ::Logger::INFO
-      @progname      = "Fleck"
-      @app_name      = $0
-      @default_host  = "127.0.0.1"
-      @default_port  = 5672
-      @default_user  = nil
-      @default_pass  = nil
-      @default_vhost = "/"
-      @default_queue = "default"
+      @logfile              = STDOUT
+      @loglevel             = ::Logger::INFO
+      @progname             = "Fleck"
+      @app_name             = $0
+      @default_host         = "127.0.0.1"
+      @default_port         = 5672
+      @default_user         = nil
+      @default_pass         = nil
+      @default_vhost        = "/"
+      @default_queue        = "default"
+
+      @tls          = false
+      @tls_ca_certs = ["#{ENV['HOME']}/.rabbitmq/cacert.pem"]
+      @tls_cert     = "#{ENV['HOME']}/.rabbitmq/cert.pem"
+      @tls_key      = "#{ENV['HOME']}/.rabbitmq/key.pem"
+      @verify_peer  = true
     end
 
     def default_options
-      opts = {}
-      opts[:host]  = @default_host
-      opts[:port]  = @default_port
-      opts[:user]  = @default_user
-      opts[:pass]  = @default_pass
-      opts[:vhost] = @default_vhost
-      opts[:queue] = @default_queue
+      opts                       = {}
+      opts[:host]                = @default_host
+      opts[:port]                = @default_port
+      opts[:user]                = @default_user
+      opts[:pass]                = @default_pass
+      opts[:vhost]               = @default_vhost
+      opts[:queue]               = @default_queue
+
+      # SSL/TLS configurations
+      opts[:tls]                 = @tls
+      opts[:tls_ca_certificates] = @tls_ca_certs
+      opts[:tls_cert]            = @tls_cert
+      opts[:tls_key]             = @tls_key
+      opts[:verify_peer]         = @verify_peer
 
       return opts
     end
