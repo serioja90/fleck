@@ -3,8 +3,11 @@
 
 require 'fleck'
 
-user        = ENV['USER']        || 'guest'
-pass        = ENV['PASS']        || 'guest'
+host = ENV['HOST'] || '127.0.0.1'
+port = ENV['PORT'] || 5672
+user = ENV['USER'] || 'guest'
+pass = ENV['PASS'] || 'guest'
+tls  = ENV['TLS'] == "true" || ENV['TLS'] == "yes"
 
 CONCURRENCY = (ENV['CONCURRENCY'] || 10).to_i
 SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
@@ -13,9 +16,13 @@ Fleck.configure do |config|
   config.default_user = user
   config.default_pass = pass
   config.loglevel     = Logger::DEBUG
+  config.default_host = host
+  config.default_port = port.to_i
+  config.tls          = tls
+  config.verify_peer  = false
 end
 
-connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
+connection = Fleck.connection({})
 client = Fleck::Client.new(connection, "example.queue", concurrency: CONCURRENCY.to_i)
 
 count   = 0
