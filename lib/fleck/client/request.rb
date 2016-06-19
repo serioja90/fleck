@@ -29,6 +29,7 @@ module Fleck
       @expired            = false
 
       headers[:version] = @version
+      headers[:ip]      = @client.local_ip
 
       @options = {
         routing_key:      @routing_key,
