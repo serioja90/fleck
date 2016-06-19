@@ -12,7 +12,7 @@ SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
 Fleck.configure do |config|
   config.default_user = user
   config.default_pass = pass
-  config.loglevel     = Logger::DEBUG
+  #config.loglevel     = Logger::DEBUG
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
