@@ -35,6 +35,10 @@ module Fleck
       @deprecated = true
     end
 
+    def deprecated?
+      @deprecated
+    end
+
     def not_found(msg = nil)
       @status = 404
       @errors << 'Resource Not Found'
