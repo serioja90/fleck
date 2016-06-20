@@ -3,7 +3,8 @@ module Fleck
   class Configuration
 
     attr_reader :logfile, :loglevel, :progname
-    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue, :app_name
+    attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue,
+                  :app_name, :filters
 
     def initialize
       @logfile       = STDOUT
@@ -16,6 +17,7 @@ module Fleck
       @default_pass  = nil
       @default_vhost = "/"
       @default_queue = "default"
+      @filters       = ["password", "secret", "token"]
     end
 
     def default_options
