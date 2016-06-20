@@ -2,6 +2,15 @@
 
 ## develop ##
 
+## v0.6.0 (16 June 2016)
+  - **NEW** __(BREAKING CHANGE)__ Use `"fleck"` exchange for RPC simulation, so that reply queues could be used in a RabbitMQ Federation configuration.
+            Be careful when upgrading `Fleck::Consumer` from version `v0.5.x` or below, because now `Fleck::Consumer` will send responses to a `:direct` exchange
+            named `"fleck"`. If there're `Fleck::Clients` that are at version `v0.5.x` or below, they will not be able to receive the response from consumers of a
+            newer version.
+  - **NEW** Added a filter that prevents from using reserved `Fleck::Consumer` methods as actions.
+  - **NEW** Implemented the feature that allows to start consumer in a blocking way.
+  - **NEW** Added `:prefetch` and `:mandatory` options to `Fleck::Consumer` configuration options.
+
 ## v0.5.1 (20 April 2016)
   - **FIX** Don't expire requests with multiple responses if any response is received. Treat that kind of request as expired if no response has been received
             until the request expiration.

@@ -31,6 +31,7 @@ module Fleck
     end
 
     def self.register_action(action, method_name)
+      raise ArgumentError.new("Cannot use `:#{method_name}` method as an action, because it is reserved for Fleck::Consumer internal stuff!") if Fleck::Consumer.instance_methods.include?(method_name.to_s.to_sym)
       self.actions_map[action.to_s] = method_name.to_s
     end
 
@@ -38,9 +39,9 @@ module Fleck
       self.initialize_block = block
     end
 
-    def self.start
+    def self.start(block: false)
       self.consumers.each do |consumer|
-        consumer.start
+        consumer.start(block: block)
       end
     end
 
@@ -77,6 +78,8 @@ module Fleck
       @__consumer_tag = nil
       @__request      = nil
       @__response     = nil
+      @__lock         = Mutex.new
+      @__lounger      = ConditionVariable.new
 
       @__host          = configs[:host]
       @__port          = configs[:port]
@@ -87,6 +90,8 @@ module Fleck
       @__exchange_name = configs[:exchange_name] || ""
       @__queue_name    = configs[:queue]
       @__autostart     = configs[:autostart]
+      @__prefetch      = (configs[:prefetch]      || 100).to_i
+      @__mandatory     = !!configs[:mandatory]
 
       if self.class.initialize_block
         self.instance_eval(&self.class.initialize_block)
@@ -101,10 +106,11 @@ module Fleck
       end
     end
 
-    def start
+    def start(block: false)
       connect!
       create_channel!
       subscribe!
+      @__lock.synchronize{ @__lounger.wait(@__lock) } if block
     end
 
     def on_message(request, response)
@@ -117,6 +123,7 @@ module Fleck
     end
 
     def terminate
+      @__lock.synchronize { @__lounger.signal }
       pause
       unless channel.nil? || channel.closed?
         channel.close
@@ -202,8 +209,8 @@ module Fleck
 
       logger.debug "Creating a new channel for #{self.class.to_s.color(:yellow)} consumer"
       @__channel  = @__connection.create_channel
-      @__channel.prefetch(1) # prevent from dispatching a new RabbitMQ message, until the previous message is not processed
-      @__publisher = @__channel.default_exchange
+      @__channel.prefetch(@__prefetch) # consume messages in batches
+      @__publisher = Bunny::Exchange.new(@__connection.create_channel, :direct, 'fleck')
       if @__exchange_type == :direct && @__exchange_name == ""
         @__queue = @__channel.queue(@__queue_name, auto_delete: false)
       else
@@ -243,7 +250,7 @@ module Fleck
           if @__channel.closed?
             logger.warn "Channel already closed! The response #{metadata.correlation_id} is going to be dropped."
           else
-            @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: true)
+            @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: @__mandatory)
             @__channel.ack(delivery_info.delivery_tag)
           end
         end
