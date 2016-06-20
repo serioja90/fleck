@@ -226,6 +226,7 @@ module Fleck
       options[:consumer_tag] = @__consumer_tag if @__consumer_tag
 
       @__subscription = @__queue.subscribe(options) do |delivery_info, metadata, payload|
+        started_at = Time.now.to_f
         @__response = Fleck::Consumer::Response.new(metadata.correlation_id)
         begin
           @__request  = Fleck::Consumer::Request.new(metadata, payload, delivery_info)
@@ -242,8 +243,6 @@ module Fleck
         end
 
         if @__response.rejected?
-          # the request was rejected, so we have to notify the reject
-          logger.warn "Request #{@__response.id} was rejected!"
           @__channel.reject(delivery_info.delivery_tag, @__response.requeue?)
         else
           logger.debug "Sending response: #{@__response}"
@@ -253,6 +252,26 @@ module Fleck
             @__publisher.publish(@__response.to_json, routing_key: metadata.reply_to, correlation_id: metadata.correlation_id, mandatory: @__mandatory)
             @__channel.ack(delivery_info.delivery_tag)
           end
+        end
+
+        exec_time  = ((Time.now.to_f - started_at) * 1000).round(2)
+        ex_type    = @__exchange_type.to_s[0].upcase
+        ex_name    = @__exchange_name.to_s == "" ? "".inspect : @__exchange_name
+        status     = @__response.status
+        status     = 406 if @__response.rejected?
+        status     = 503 if @__channel.closed?
+
+        message    = "#{@__request.ip} #{metadata[:app_id]} => "
+        message   += "(#{@__exchange_name.to_s.inspect}|#{ex_type}|#{@__queue_name}) "
+        message   += "##{@__request.id} \"#{@__request.action} /#{@__request.version || 'v1'}\" #{status} "
+        message   += "(#{exec_time}ms) #{'DEPRECATED!' if @__response.deprecated?}"
+
+        if status >= 500
+          logger.error message
+        elsif status >= 400 || @__response.deprecated?
+          logger.warn message
+        else
+          logger.info message
         end
       end
     end

@@ -27,8 +27,10 @@ module Fleck
       @multiple_responses = multiple_responses
       @ztimer_slot        = nil
       @expired            = false
+      @params             = params.filtered!
 
       headers[:version] = @version
+      headers[:ip]      = @client.local_ip
 
       @options = {
         routing_key:      @routing_key,
@@ -40,12 +42,12 @@ module Fleck
         persistent:       rmq_options[:persistent] || false,
         content_type:     'application/json',
         content_encoding: 'UTF-8'
-      }
+      }.filtered!
       @options[:priority]   = rmq_options[:priority] unless rmq_options[:priority].nil?
       @options[:app_id]     = rmq_options[:app_id] || Fleck.config.app_name
       @options[:expiration] = @timeout
 
-      @message = Oj.dump({headers: headers, params: params}, mode: :compat)
+      @message = Oj.dump({headers: headers, params: @params}, mode: :compat)
 
       logger.debug "Request prepared"
     end
@@ -63,7 +65,7 @@ module Fleck
     def send!(async = false)
       @started_at = Time.now.to_f
       @async = async
-      logger.debug("Sending request with (options: #{@options}, message: #{@message})")
+      logger.debug("Sending request with (options: #{@options}, message: #{@params})")
 
       if @timeout
         @ztimer_slot = Ztimer.after(@timeout){ expire! }

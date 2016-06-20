@@ -3,7 +3,7 @@ module Fleck
   class Consumer::Request
     include Fleck::Loggable
 
-    attr_reader :id, :metadata, :payload, :action, :data, :headers, :action, :version, :params, :status, :errors
+    attr_reader :id, :metadata, :payload, :action, :data, :headers, :action, :version, :ip, :params, :status, :errors
 
     def initialize(metadata, payload, delivery_info)
       @id              = metadata.correlation_id
@@ -17,6 +17,7 @@ module Fleck
       @headers       = (@metadata.headers || {}).to_hash_with_indifferent_access
       @action        = @metadata.type
       @version       = nil
+      @ip            = nil
       @params        = {}
       @status        = 200
       @errors        = []
@@ -27,14 +28,15 @@ module Fleck
     protected
 
     def parse_request!
-      logger.debug "Parsing request (exchange: #{@exchange}, queue: #{@queue}, options: #{@metadata}, message: #{@payload})"
+      @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access.filtered!
+      @headers.merge!(@data["headers"] || {}).filtered!
 
-      @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access
-      @headers.merge!(@data["headers"] || {})
+      logger.debug "Processing request (exchange: #{@exchange}, queue: #{@queue}, options: #{@headers}, message: #{@data})"
 
       @action            ||= @headers["action"]
       @headers["action"] ||= @action
       @version             = @headers["version"]
+      @ip                  = @headers["ip"]
       @params              = @data["params"] || {}
     rescue Oj::ParseError => e
       logger.error(e.inspect + "\n" + e.backtrace.join("\n"))

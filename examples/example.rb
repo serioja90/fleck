@@ -45,7 +45,7 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
+    client.request(action: 'incr', params: {num: i, secret: 'supersecret'}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else

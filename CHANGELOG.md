@@ -1,6 +1,10 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented a basic log filter for headers and params in requests and responses.
+  - **NEW** Log each processed request in `Fleck::Consumer::Response`.
+  - **NEW** Implemented `:deprecated?` method for `Fleck::Consumer::Response`.
+  - **NEW** Store client IP address to requests headers, in order to be able to trace requests origin when multiple clients making requests to the same consumer type.
 
 ## v0.6.0 (16 June 2016)
   - **NEW** __(BREAKING CHANGE)__ Use `"fleck"` exchange for RPC simulation, so that reply queues could be used in a RabbitMQ Federation configuration.

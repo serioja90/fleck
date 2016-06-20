@@ -3,6 +3,8 @@ module Fleck
   class Client
     include Fleck::Loggable
 
+    attr_reader :local_ip, :remote_ip
+
     def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false, concurrency: 1)
       @connection         = connection
       @queue_name         = queue_name
@@ -13,6 +15,8 @@ module Fleck
       @subscriptions      = ThreadSafe::Array.new
       @terminated         = false
       @mutex              = Mutex.new
+      @local_ip           = @connection.transport.socket.local_address.ip_address
+      @remote_ip          = @connection.transport.socket.remote_address.ip_address
 
       @channel     = @connection.create_channel
       @exchange    = Bunny::Exchange.new(@channel, :direct, 'fleck')
