@@ -28,10 +28,10 @@ module Fleck
     protected
 
     def parse_request!
-      logger.debug "Parsing request (exchange: #{@exchange}, queue: #{@queue}, options: #{@metadata}, message: #{@payload})"
+      @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access.filtered!
+      @headers.merge!(@data["headers"] || {}).filtered!
 
-      @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access
-      @headers.merge!(@data["headers"] || {})
+      logger.debug "Processing request (exchange: #{@exchange}, queue: #{@queue}, options: #{@headers}, message: #{@data})"
 
       @action            ||= @headers["action"]
       @headers["action"] ||= @action

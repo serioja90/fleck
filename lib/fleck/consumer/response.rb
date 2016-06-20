@@ -54,14 +54,17 @@ module Fleck
       end
     end
 
-    def to_json
-      return Oj.dump({
+    def to_json(filter: false)
+      data = {
         "status"     => @status,
         "errors"     => @errors,
         "headers"    => @headers,
         "body"       => @body,
         "deprecated" => @deprecated
-      }, mode: :compat)
+      }
+      data.filter! if filter
+
+      return Oj.dump(data, mode: :compat)
     rescue => e
       logger.error e.inspect + "\n" + e.backtrace.join("\n")
       return Oj.dump({
@@ -71,7 +74,7 @@ module Fleck
     end
 
     def to_s
-      return "#<#{self.class} #{self.to_json}>"
+      return "#<#{self.class} #{self.to_json(filter: true)}>"
     end
   end
 end

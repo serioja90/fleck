@@ -12,7 +12,7 @@ SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
 Fleck.configure do |config|
   config.default_user = user
   config.default_pass = pass
-  #config.loglevel     = Logger::DEBUG
+  config.loglevel     = Logger::DEBUG
 end
 
 connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
@@ -45,7 +45,7 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
+    client.request(action: 'incr', params: {num: i, secret: 'supersecret'}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else
