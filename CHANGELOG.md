@@ -1,6 +1,7 @@
 # CHANGELOG #
 
 ## develop ##
+  - **NEW** Implemented a basic log filter for headers and params in requests and responses.
   - **NEW** Log each processed request in `Fleck::Consumer::Response`.
   - **NEW** Implemented `:deprecated?` method for `Fleck::Consumer::Response`.
   - **NEW** Store client IP address to requests headers, in order to be able to trace requests origin when multiple clients making requests to the same consumer type.
