@@ -1,6 +1,8 @@
 # CHANGELOG #
 
 ## develop ##
+
+## v0.7.0 (21 June 2016)
   - **NEW** Added multihost support to Fleck configuration, that allows to manage network failure situations and to choose the best options from the list of available hosts.
             This feature uses `Fleck::HostRating` to collect TCP latency data about each provided host, so that when a new connection is required, the host with lowest latency
             will be choosed. If a host becomes unreachable, it gets the lowest rating and will be used as the last option, allowing you to automatically manage network failures.
