@@ -15,8 +15,7 @@ Fleck.configure do |config|
   config.loglevel     = Logger::DEBUG
 end
 
-connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "example.queue", concurrency: CONCURRENCY.to_i)
+client = Fleck::Client.new(Fleck.connection, "example.queue", concurrency: CONCURRENCY.to_i)
 
 count   = 0
 success = 0

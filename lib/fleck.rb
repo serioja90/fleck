@@ -34,7 +34,7 @@ module Fleck
     end
   end
 
-  def self.connection(options)
+  def self.connection(options = {})
     opts = Fleck.config.default_options.merge(options)
     key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
     conn = @connections[key]
