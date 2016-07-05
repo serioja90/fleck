@@ -31,6 +31,14 @@ class HashWithIndifferentAccess < Hash
     end
   end
 
+  def inspect
+    super
+  end
+
+  def to_s
+    super
+  end
+
   protected
 
   def copy_from(original)
@@ -44,5 +52,34 @@ end
 class Hash
   def to_hash_with_indifferent_access
     return HashWithIndifferentAccess.new(self)
+  end
+
+  def to_s
+    if @filtered
+      return self.dup.filter!.inspect
+    else
+      super
+    end
+  end
+
+  def filtered!
+    @filtered = true
+    self.keys.each do |key|
+      self[key].filtered! if self[key].is_a?(Hash)
+    end
+    return self
+  end
+
+  def filter!
+    filters = Fleck.config.filters
+    self.keys.each do |key|
+      if filters.include?(key.to_s)
+        self[key] = "[FILTERED]"
+      elsif self[key].is_a?(Hash)
+        self[key] = self[key].dup.filter!
+      end
+    end
+
+    return self
   end
 end

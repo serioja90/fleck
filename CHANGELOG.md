@@ -2,6 +2,15 @@
 
 ## develop ##
 
+## v0.7.0 (21 June 2016)
+  - **NEW** Added multihost support to Fleck configuration, that allows to manage network failure situations and to choose the best options from the list of available hosts.
+            This feature uses `Fleck::HostRating` to collect TCP latency data about each provided host, so that when a new connection is required, the host with lowest latency
+            will be choosed. If a host becomes unreachable, it gets the lowest rating and will be used as the last option, allowing you to automatically manage network failures.
+  - **NEW** Implemented a basic log filter for headers and params in requests and responses.
+  - **NEW** Log each processed request in `Fleck::Consumer::Response`.
+  - **NEW** Implemented `:deprecated?` method for `Fleck::Consumer::Response`.
+  - **NEW** Store client IP address to requests headers, in order to be able to trace requests origin when multiple clients making requests to the same consumer type.
+
 ## v0.6.0 (16 June 2016)
   - **NEW** __(BREAKING CHANGE)__ Use `"fleck"` exchange for RPC simulation, so that reply queues could be used in a RabbitMQ Federation configuration.
             Be careful when upgrading `Fleck::Consumer` from version `v0.5.x` or below, because now `Fleck::Consumer` will send responses to a `:direct` exchange

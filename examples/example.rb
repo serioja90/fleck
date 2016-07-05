@@ -15,8 +15,7 @@ Fleck.configure do |config|
   config.loglevel     = Logger::DEBUG
 end
 
-connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "example.queue", concurrency: CONCURRENCY.to_i)
+client = Fleck::Client.new(Fleck.connection, "example.queue", concurrency: CONCURRENCY.to_i)
 
 count   = 0
 success = 0
@@ -45,7 +44,7 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
+    client.request(action: 'incr', params: {num: i, secret: 'supersecret'}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else

@@ -8,8 +8,9 @@ require "oj"
 require "ztimer"
 require "fleck/version"
 require "fleck/hash_with_indifferent_access"
-require "fleck/configuration"
 require "fleck/loggable"
+require "fleck/host_rating"
+require "fleck/configuration"
 require "fleck/consumer"
 require "fleck/client"
 
@@ -33,7 +34,7 @@ module Fleck
     end
   end
 
-  def self.connection(options)
+  def self.connection(options = {})
     opts = Fleck.config.default_options.merge(options)
     key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
     conn = @connections[key]
