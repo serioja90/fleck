@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+$:.unshift(File.expand_path("../"))
+
+require 'thor'
+require_relative '../tools/cli'
+require_relative '../lib/fleck/version'
+
+Cli.start

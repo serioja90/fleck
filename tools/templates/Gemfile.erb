@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+gem 'fleck', '~> <%= @fleck_version %>'
+gem 'ztimer', '~> 0.6.0'
+gem 'lounger', '~> 0.2.0'
+gem 'configatron', '~> 4.5.0'
+gem 'pry', '~> 0.10.3', require: false
+gem 'oj_mimic_json', '~> 1.0.1'
+gem 'lru_redux', '~> 1.1.0'
+<% if @use_db %>gem 'sequel', '~> 5.0.0'<% end %>
+<% if @db_type == "postgres" %>gem 'sequel_pg', '~> 1.7.1', require: 'sequel'<% end %>
