@@ -1,7 +1,5 @@
-require 'open3'
-
 class Cli::Installation < Thor::Group
-  include Thor::Actions
+  include Cli::Utilities
 
   def initialize(app_name, path, base)
     @base = base
@@ -11,6 +9,7 @@ class Cli::Installation < Thor::Group
     @use_db = true
     @db_type = nil
     @fleck_version = Fleck::VERSION
+    @templates = "#{@base}/templates"
   end
 
   def start
@@ -18,6 +17,7 @@ class Cli::Installation < Thor::Group
     setup_db_dir
     generate_gemfile
     bundle_install
+    init_git
   end
 
   private
@@ -27,14 +27,14 @@ class Cli::Installation < Thor::Group
     if File.exists?(@app_dir)
       say "A file/directory at #{@app_dir} already exists!", :yellow
       if yes?("Do you want to re-install the app? All the contents at #{@app_dir} will be lost! [No/yes] ", :yellow)
-        FileUtils.rm_rf @app_dir
+        rm_rf @app_dir
       else
         cancel!
       end
     end
 
-    FileUtils.mkdir_p @app_dir
-    cp "#{@templates}/gitignore", "#{@app_dir}/.gitignore"
+    mkdir_p @app_dir
+    cp "#{@base}/templates/gitignore", "#{@app_dir}/.gitignore"
 
     make_empty_dir "#{@app_dir}/app/models"
     make_empty_dir "#{@app_dir}/app/controllers"
@@ -70,48 +70,21 @@ class Cli::Installation < Thor::Group
   end
 
 
+  # Install gems listed in Gemfile
   def bundle_install
-    run "cd #{@app_dir} && bundle install"
+    run "bundle install", wd: @app_dir
+  end
+
+
+  # Initialize a Git repository within the app directory
+  def init_git
+    run "git init .", wd: @app_dir
   end
 
 
   # Make a new empty directory
   def make_empty_dir(path)
-    FileUtils.mkdir_p path
-    FileUtils.touch "#{path}/.gitkeep"
-  end
-
-  def cp(source, destination)
-    FileUtils.cp source, destination
-  end
-
-
-  def run(command)
-    process = nil
-    say "#{command}", :blue
-
-    Open3.popen3(command) do |stdin, stdout, stderr, wait_thr|
-      stdout.each do |line|
-        say line, :green
-        yield line if block_given?
-      end
-
-      stderr.each do |line|
-        say line, :red
-      end
-
-      process = wait_thr.value
-    end
-
-    fail "`#{command}`: #{process}." unless process.success?
-
-    process
-  end
-
-
-  # Cancel installation
-  def cancel!
-    say "[Canceled]", :red
-    exit 0
+    mkdir_p path
+    touch "#{path}/.gitkeep"
   end
 end

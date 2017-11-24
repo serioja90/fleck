@@ -1,11 +1,11 @@
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 
-autoload :FileUtils, 'fileutils'
-autoload :ERB, 'erb'
-
 class Cli < Thor
+  autoload :Utilities, "cli/utilities"
+  autoload :Installation, "cli/installation"
+
   include Thor::Actions
-  autoload "Installation", "cli/installation"
+  include Cli::Utilities
 
   desc "new APP_NAME", "Creates a new Fleck app"
   option :path, aliases: "-p", type: :string, desc: "Path where to create the new app"
@@ -15,13 +15,6 @@ class Cli < Thor
     installation = Installation.new(app_name, path, File.dirname(__FILE__))
     installation.start
   rescue Interrupt
-    canceled!
-  end
-
-  private
-
-  def canceled!
-    say "[Canceled]", :red
-    exit 0
+    cancel!
   end
 end
