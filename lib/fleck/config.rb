@@ -16,10 +16,10 @@ module Fleck
 
     RESERVED = ["config_file", "config_paths", "root", "version", "rabbitmq"]
 
-    attr_accessor :config, :search_paths
+    attr_accessor :config, :env, :root, :search_paths
 
     def initialize
-      @env = nil
+      @env = Config.get_env
       @root = Dir.pwd
       @config = Configatron::RootStore.new
 
@@ -63,38 +63,10 @@ module Fleck
         Config.mix_configs! cfg, data, "queues"
       end
 
-      @config.env  = Config.get_env
+      @config.env  = @env
       @config.root = @root
 
-      # set default configs
-
-      # @config.app.name        = File.basename(File.expand_path(@root))
-      # @config.app.timezone    = "UTC"
-      # @config.app.pidfile     = "#{@config.root}/tmp/pids/fleck.pid"
-      # @config.app.logfile     = "#{@config.root}/log/fleck.log"
-      # @config.app.loglevel    = Logger::INFO
-      # @config.app.interactive = true
-
-      # if @config._use_db
-      #   # set database default configs
-      #   @config.db.host    = "127.0.0.1"
-      #   @config.db.port    = 5432
-      #   @config.db.name    = "postgres"
-      #   @config.db.user    = nil
-      #   @config.db.pass    = nil
-      #   @config.db.sslmode = "disable"
-      # end
-
-      # if @config.config_file
-      #   # Load configurations from fleck.yml
-      #   @config._yml_configs = YAML.load_file(@config.config_file)
-
-      #   # Remove reserved configuration keys
-      #   configs = @config._yml_configs.reject{|k,_| k.start_with?("_") || RESERVED.include?(k.downcase)}
-      #   @config.configure_from_hash(configs)
-      # end
-
-      @config.app.configure_from_hash(Config::Application.new(@root, cfg["app"]).to_h)
+      @config.app.configure_from_hash(Config::Application.new(@root, @env, cfg["app"]).to_h)
       @config.rabbitmq = Config::Rabbitmq.new(cfg["rabbitmq"])
       @config.lock!
 
