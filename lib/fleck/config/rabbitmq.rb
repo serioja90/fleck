@@ -3,14 +3,18 @@ module Fleck
   class Config::Rabbitmq
     PERMITED_PARAMS = ["cluster", "name"]
 
-    def initialize(configs = {})
-      @configs  = configs || {}
+    attr_accessor :clusters, :hosts, :queues
+    def initialize(rmq_configs = {}, queues_configs = {})
+      @configs  = rmq_configs || {}
+      @queues_configs = queues_configs || {}
       @last_idx = 0
       @clusters = {}
       @hosts    = []
+      @queues   = {}
 
       load_clusters!
       load_hosts!
+      load_queues!
     end
 
     private
@@ -130,6 +134,29 @@ module Fleck
 
 
     #####################################################################################################
+    # Load RabbitMQ queues configurations
+    #####################################################################################################
+    def load_queues!
+      defaults = @queues_configs.select{|k,_| ["exchange_type", "exchange_name", "cluster", "threads"].include?(k) }
+
+      queues = @queues_configs.reject{|k,_| ["exchange_type", "exchange_name", "cluster", "threads"].include?(k) }
+      queues.each do |label, value|
+        if value.is_a?(String)
+          @queues[label] = defaults.dup
+          @queues[label]["name"] = value
+          check_queue_configs(@queues[label], defaults)
+        elsif value.is_a?(Hash)
+          @queues[label] = defaults.dup
+          @queues[label].merge!(value)
+          check_queue_configs(@queues[label], defaults)
+        else
+          raise "Unsupported queue config type: (#{value.class.name}) #{value.inspect}"
+        end
+      end
+    end
+
+
+    #####################################################################################################
     # Extract host configs from a URI string
     #####################################################################################################
     def parse_host_uri(rmq_uri, name = nil)
@@ -180,6 +207,29 @@ module Fleck
       check_type_of cfg["pass"],    name: "rabbitmq.host.pass",    expected: String
       check_type_of cfg["vhost"],   name: "rabbitmq.host.vhost",   expected: String
       check_type_of cfg["tls"],     name: "rabbitmq.host.tls",     expected: [TrueClass, FalseClass]
+
+      return cfg
+    end
+
+
+    #####################################################################################################
+    # Check queue configs and set defaults when config is missing
+    #####################################################################################################
+    def check_queue_configs(cfg, defaults = {})
+      cfg["exchange_type"] ||= defaults["exchange_type"] || "direct"
+      cfg["exchange_name"] ||= defaults["exchange_name"] || ""
+      cfg["cluster"]       ||= defaults["cluster"] || @clusters.keys.first
+      cfg["threads"]       ||= defaults["threads"] || 1
+
+      check_type_of cfg["name"],          name: "rabbitmq.queue.name",          expected: String
+      check_type_of cfg["exchange_type"], name: "rabbitmq.queue.exchange_type", expected: String
+      check_type_of cfg["exchange_name"], name: "rabbitmq.queue.exchange_name", expected: String
+      check_type_of cfg["cluster"],       name: "rabbitmq.queue.cluster",       expected: String
+      check_type_of cfg["threads"],       name: "rabbitmq.queue.threads",       expected: Fixnum
+
+      if @clusters[cfg["cluster"]].nil?
+        raise "Invalid cluster name #{cfg['cluster'].inspect} for RabbitMQ queue: #{cfg.inspect}"
+      end
 
       return cfg
     end

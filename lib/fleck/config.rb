@@ -41,9 +41,15 @@ module Fleck
 
       @config_files.each do |filename|
         @search_paths.each do |path|
-          file = File.expand_path(File.join(@root, path, filename))
+          file = nil
+          if path.start_with?("/")
+            file = File.expand_path(File.join(path, filename))
+          else
+            file = File.expand_path(File.join(@root, path, filename))
+          end
+
           if File.exists?(file)
-            config = case file
+            config = case filename
             when "fleck.yml"    then yaml["fleck"]
             when "app.yml"      then yaml["app"]
             when "rabbitmq.yml" then yaml["rabbitmq"]
@@ -67,10 +73,14 @@ module Fleck
       @config.root = @root
 
       @config.app.configure_from_hash(Config::Application.new(@root, @env, cfg["app"]).to_h)
-      @config.rabbitmq = Config::Rabbitmq.new(cfg["rabbitmq"])
-      @config.lock!
+      @config.rabbitmq = Config::Rabbitmq.new(cfg["rabbitmq"], cfg["queues"])
 
       return @config
+    end
+
+
+    def lock!
+      @config.lock!
     end
 
 
@@ -93,7 +103,7 @@ module Fleck
     def self.mix_configs!(target, data, namespace)
       env = Config.get_env
 
-      if data[namespace] and not data[namespace].emtpy?
+      if data[namespace] and not data[namespace].empty?
         target[namespace] ||= {}
         target[namespace].merge!(data[namespace])
       end
