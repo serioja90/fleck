@@ -17,6 +17,17 @@ module Fleck
       load_queues!
     end
 
+    def new_connection(cluster: nil)
+      selected_cluster = cluster ? @clusters[cluster.to_s] : @clusters.values.first
+
+      start_connection(selected_cluster || [])
+    end
+
+
+    def queue_exists?(queue_name)
+      return !@queues[queue_name].nil?
+    end
+
     private
 
     #####################################################################################################
@@ -228,7 +239,23 @@ module Fleck
       check_type_of cfg["threads"],       name: "rabbitmq.queue.threads",       expected: Fixnum
 
       if @clusters[cfg["cluster"]].nil?
-        raise "Invalid cluster name #{cfg['cluster'].inspect} for RabbitMQ queue: #{cfg.inspect}"
+        raise "Invalid cluster name #{cfg['cluster'].inspect} for RabbitMQ queue #{cfg['name'].inspect}"
+      end
+
+      unless ["direct", "topic", "fanout", "headers"].include?(cfg["exchange_type"])
+        raise "Invalid exchange_type #{cfg["exchange_type"].inspect} for queue #{cfg['name'].inspect}"
+      end
+
+      if cfg["consumption_mode"].nil?
+        if cfg["exchange_type"] == "direct"
+          cfg["consumption_mode"] = "round-robin"
+        else
+          cfg["consumption_mode"] = "broadcast"
+        end
+      end
+
+      unless ["round-robin", "broadcast"].include?(cfg["consumption_mode"])
+        raise "Invalid consumption_mode #{cfg["consumption_mode"].inspect} for queue #{cfg['name'].inspect}"
       end
 
       return cfg
@@ -253,6 +280,46 @@ module Fleck
       else
         raise "Invalid type for ##{name} = #{value.inspect}: #{expected} expected"
       end
+    end
+
+
+    #####################################################################################################
+    # Start a new RabbitMQ connection
+    #####################################################################################################
+    def start_connection(hosts = [])
+      condition = Lounger.new
+      workers   = Ztimer.new(concurrency: hosts.count)
+      count     = 0
+      result    = nil
+
+      hosts.each do |configs|
+        opts = configs.dup
+        workers.async do
+          begin
+            conn = Bunny.new(opts)
+            condition.signal conn
+          rescue => e
+            puts e.to_s + "\n" + e.backtrace.join("\n")
+            condition.signal nil
+          end
+        end
+      end
+
+      while result.nil? && count < hosts.count do
+        result = condition.wait
+        count += 1
+      end
+
+      Thread.new do
+        [hosts.count - count].times do
+          conn = condition.wait
+          conn.close if conn && conn.respond_to?(close)
+        end
+      end
+
+      fail "Failed to start a new RabbitMQ connection!" if result.nil?
+
+      return result
     end
   end
 end

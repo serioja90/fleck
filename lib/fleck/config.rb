@@ -1,5 +1,3 @@
-require 'configatron/core'
-
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 
 autoload "YAML", "yaml"
@@ -9,8 +7,7 @@ autoload "Logger", "logger"
 module Fleck
   class Config
     autoload "Application", "config/application"
-    autoload "Database", "config/database"
-    autoload "Rabbitmq", "config/rabbitmq"
+    autoload "Rabbitmq",    "config/rabbitmq"
 
     @default_instance = nil
 

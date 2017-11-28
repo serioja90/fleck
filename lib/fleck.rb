@@ -1,4 +1,8 @@
+$LOAD_PATH.unshift(File.dirname(__FILE__))
+
 require "logger"
+require 'configatron/core'
+require 'yaml'
 require "rainbow"
 require "rainbow/ext/string"
 require "bunny"
@@ -6,15 +10,21 @@ require "thread_safe"
 require "securerandom"
 require "oj"
 require "ztimer"
+require "lounger"
 require "fleck/version"
 require "fleck/hash_with_indifferent_access"
 require "fleck/loggable"
 require "fleck/host_rating"
+require "fleck/config"
 require "fleck/configuration"
 require "fleck/consumer"
 require "fleck/client"
 
 module Fleck
+  autoload "Router", "fleck/router"
+
+  @default_instance = nil
+
   @config      = Configuration.new
   @consumers   = ThreadSafe::Array.new
   @connections = ThreadSafe::Hash.new
@@ -63,10 +73,8 @@ module Fleck
     true
   end
 
-  private
-
-  class << self
-    attr_reader :config
+  def self.method_missing(name, *args, &block)
+    @default_instance ||= Fleck.new
+    @default_instance.send(name, *args, &block)
   end
-
 end

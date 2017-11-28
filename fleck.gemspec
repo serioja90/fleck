@@ -33,5 +33,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "bunny", "~> 2.2"
   spec.add_dependency "thread_safe", "~> 0.3"
   spec.add_dependency "oj", "~> 2.14"
-  spec.add_dependency "ztimer", "~> 0.4"
+  spec.add_dependency "ztimer", "~> 0.6"
+  spec.add_dependency "lounger", "~> 0.3"
 end
