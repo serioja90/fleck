@@ -24,6 +24,10 @@ class Cli::Installation < Thor::Group
 
   # Setup app dir and all the dirs used by application
   def setup_app_dir
+    if no?("Going to create a new Fleck progect at #{@app_dir}. Continue? [Yes/no]", :yellow)
+      cancel!
+    end
+
     if File.exists?(@app_dir)
       say "A file/directory at #{@app_dir} already exists!", :yellow
       if yes?("Do you want to re-install the app? All the contents at #{@app_dir} will be lost! [No/yes] ", :yellow)
