@@ -1,7 +1,9 @@
 # CHANGELOG #
 
 ## develop ##
-  - **BRACKING CHANGE** Updateg gemset, in order to be able to use new versions of Ruby.
+
+## v1.0.0 (2 April 2020)
+  - **BREAKING CHANGE** Updateg gemset, in order to be able to use new versions of Ruby.
 
 ## v0.7.0 (21 June 2016)
   - **NEW** Added multihost support to Fleck configuration, that allows to manage network failure situations and to choose the best options from the list of available hosts.
