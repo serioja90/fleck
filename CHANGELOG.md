@@ -2,7 +2,7 @@
 
 ## develop ##
 
-## v1.0.0 (2 April 2020)
+## v1.0.1 (2 April 2020)
   - **BREAKING CHANGE** Updateg gemset, in order to be able to use new versions of Ruby.
 
 ## v0.7.0 (21 June 2016)
