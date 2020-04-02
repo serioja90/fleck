@@ -1,6 +1,7 @@
 # CHANGELOG #
 
 ## develop ##
+  - **BRACKING CHANGE** Updateg gemset, in order to be able to use new versions of Ruby.
 
 ## v0.7.0 (21 June 2016)
   - **NEW** Added multihost support to Fleck configuration, that allows to manage network failure situations and to choose the best options from the list of available hosts.
@@ -48,7 +49,7 @@
 ## v0.4.0 (15 April 2016) ##
   - **NEW** Support different types of exchanges in both `Fleck::Client` and `Fleck::Consumer`.
   - **FIX** Use `auto_delete` queue for `Fleck::Client`, so that it is deleted when the client is terminated.
-  - **NEW** Add `:rmq_options` option to `Fleck::Client::Request`, which can be used to pass options like `:persistent`, `mandatory`, etc. 
+  - **NEW** Add `:rmq_options` option to `Fleck::Client::Request`, which can be used to pass options like `:persistent`, `mandatory`, etc.
             to RabbitMQ message on publish.
   - **NEW** Store `:headers` attribute of `Fleck::Client::Request` into RabbitMQ message `:headers`, so that in the future only
             `:params` option will be converted to JSON.
