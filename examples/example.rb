@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+# frozen_string_literal: true
 
 require 'fleck'
 
@@ -8,6 +8,7 @@ pass        = ENV['PASS']        || 'guest'
 
 CONCURRENCY = (ENV['CONCURRENCY'] || 10).to_i
 SAMPLES     = (ENV['SAMPLES']     || 10_000).to_i
+QUEUE       = 'example.queue'
 
 Fleck.configure do |config|
   config.default_user = user
@@ -15,7 +16,7 @@ Fleck.configure do |config|
   config.loglevel     = Logger::DEBUG
 end
 
-client = Fleck::Client.new(Fleck.connection, "example.queue", concurrency: CONCURRENCY.to_i)
+client = Fleck::Client.new(Fleck.connection, QUEUE, concurrency: CONCURRENCY.to_i)
 
 count   = 0
 success = 0
@@ -26,17 +27,15 @@ lock  = Mutex.new
 condition = ConditionVariable.new
 
 class First < Fleck::Consumer
-  configure queue: "example.queue", concurrency: CONCURRENCY.to_i
+  configure queue: QUEUE, concurrency: CONCURRENCY.to_i
 
-  def on_message(request, response)
+  def on_message
     if rand > 0.1
-      if request.action == "incr"
-        response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
-      else
-        response.not_found
-      end
+      not_found! if request.action != 'incr'
+
+      ok! "#{params[:num].to_i + 1}. Hello, World!"
     else
-      logger.warn "REJECTING REQUEST {headers: #{request.headers}, params: #{request.params}"
+      logger.warn "REJECTING REQUEST {headers: #{headers}, params: #{params}"
       response.reject!(requeue: true)
     end
   end
@@ -44,11 +43,17 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i, secret: 'supersecret'}, async: true, timeout: 1, rmq_options: { priority: (rand * 9).round(0), mandatory: false}) do |request, response|
+    client.request(
+      action: 'incr',
+      params: { num: i, secret: 'supersecret' },
+      async: true,
+      timeout: 1,
+      rmq_options: { priority: (rand * 9).round(0), mandatory: false }
+    ) do |request, response|
       if response.status == 200
         request.logger.debug response.body
       else
-        request.logger.error "#{response.status} #{response.errors.join(", ")}"
+        request.logger.error "#{response.status} #{response.errors.join(', ')}"
       end
       mutex.synchronize do
         count += 1
@@ -64,11 +69,6 @@ Thread.new do
   end
 end
 
-at_exit do
-  puts "Total: #{count}, Success: #{success}, Failure: #{failure}"
-end
-
 lock.synchronize { condition.wait(lock) }
-exit
 
-#First.consumers.map(&:terminate)
+puts "Total: #{count}, Success: #{success}, Failure: #{failure}"

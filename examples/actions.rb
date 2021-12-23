@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
+# frozen_string_literal: true
 
 require 'fleck'
 
@@ -8,6 +8,7 @@ pass        = ENV['PASS']        || 'guest'
 
 CONCURRENCY = (ENV['CONCURRENCY'] || 2).to_i
 SAMPLES     = (ENV['SAMPLES']     || 10).to_i
+QUEUE       = 'actions.example.queue'
 
 Fleck.configure do |config|
   config.default_user = user
@@ -15,23 +16,23 @@ Fleck.configure do |config|
   config.loglevel     = Logger::DEBUG
 end
 
-connection = Fleck.connection(host: "127.0.0.1", port: 5672, user: user, pass: pass, vhost: "/")
-client = Fleck::Client.new(connection, "actions.example.queue", concurrency: CONCURRENCY.to_i)
+connection = Fleck.connection(host: '127.0.0.1', port: 5672, user: user, pass: pass, vhost: '/')
+client = Fleck::Client.new(connection, QUEUE, concurrency: CONCURRENCY.to_i)
 
 class MyConsumer < Fleck::Consumer
-  configure queue: 'actions.example.queue', concurrency: CONCURRENCY.to_i
+  configure queue: QUEUE, concurrency: CONCURRENCY.to_i
   actions :hello, ciao: 'my_custom_method', aloha: 'my_aloha'
 
   def hello
-    response.body = "Hello!"
+    ok! 'Hello!'
   end
 
   def my_custom_method
-    response.body = "Ciao!"
+    ok! 'Ciao!'
   end
 
   def my_aloha
-    response.body = "Aloha!"
+    ok! 'Aloha!'
   end
 
   def not_an_action
@@ -39,15 +40,15 @@ class MyConsumer < Fleck::Consumer
   end
 end
 
-actions = [:hello, :ciao, :aloha, :not_an_action]
+actions = %i[hello ciao aloha not_an_action]
 
 SAMPLES.to_i.times do |num|
   action = actions[(rand * actions.size).to_i]
-  client.request(action: action, params: {num: num}, timeout: 5) do |request, response|
+  client.request(action: action, params: { num: num }, timeout: 5) do |_, response|
     if response.status == 200
       Fleck.logger.info "ACTION: (#{action.inspect}) #{response.body}"
     else
-      Fleck.logger.error "ACTION: (#{action.inspect}) #{response.errors.join(", ")}"
+      Fleck.logger.error "ACTION: (#{action.inspect}) #{response.errors.join(', ')}"
     end
   end
 end

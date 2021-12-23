@@ -46,12 +46,16 @@ module Fleck
     end
 
     def render_error(status, msg = [])
+      raise ArgumentError, "Invalid status code: #{status.inspect}" unless (400..599).cover?(status.to_i)
+
       @status = status.to_i
       if msg.is_a?(Array)
         @errors += msg
       else
         @errors << msg
       end
+
+      @errors.compact!
     end
 
     def to_json(filter: false)

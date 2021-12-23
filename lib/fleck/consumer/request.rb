@@ -3,16 +3,19 @@ module Fleck
   class Consumer::Request
     include Fleck::Loggable
 
-    attr_reader :id, :metadata, :payload, :action, :data, :headers, :action, :version, :ip, :params, :status, :errors
+    attr_reader :id, :metadata, :payload, :action, :data, :headers, :version, :ip, :params, :status, :errors,
+                :delivery_tag, :app_id
 
     def initialize(metadata, payload, delivery_info)
       @id              = metadata.correlation_id
       logger.progname += " #{@id}"
 
       @metadata      = metadata
+      @app_id        = metadata[:app_id]
       @payload       = payload
       @exchange      = delivery_info.exchange.inspect
       @queue         = delivery_info.routing_key.inspect
+      @delivery_tag  = delivery_info.delivery_tag
       @data          = {}
       @headers       = (@metadata.headers || {}).to_hash_with_indifferent_access
       @action        = @metadata.type

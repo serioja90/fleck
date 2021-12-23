@@ -29,11 +29,11 @@ condition = ConditionVariable.new
 class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i, exchange_type: :fanout, exchange_name: 'fanout.example.queue'
 
-  def on_message(request, response)
+  def on_message
     if request.action == "incr"
-      response.body = "#{request.params[:num].to_i + 1}. Hello, World!"
+      ok! "#{request.params[:num].to_i + 1}. Hello, World!"
     else
-      response.not_found
+      not_found!
     end
   end
 end
@@ -56,9 +56,6 @@ Thread.new do
   end
 end
 
-at_exit do
-  puts "Total: #{count}, Success: #{success}, Failure: #{failure}"
-end
-
 lock.synchronize { condition.wait(lock) }
-exit
+
+puts "Total: #{count}, Success: #{success}, Failure: #{failure}"
