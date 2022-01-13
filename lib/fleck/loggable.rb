@@ -8,4 +8,8 @@ module Fleck::Loggable
 
     @logger
   end
+
+  def log_error(error)
+    logger.error "#{error.inspect}\n#{error.backtrace.join("\n")}"
+  end
 end

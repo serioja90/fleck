@@ -30,7 +30,7 @@ class MyConsumer < Fleck::Consumer
     logger.debug "Quit message received, but I'm goint to sleep for 2 seconds ..."
     sleep 2
     logger.debug "Let's terminate this example!"
-    Ztimer.async { terminate }
+    Ztimer.async { self.class.terminate }
   end
 end
 

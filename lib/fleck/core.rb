@@ -4,6 +4,6 @@ $LOAD_PATH << File.expand_path(__dir__)
 
 module Fleck
   module Core
-    autoload :ConsumerBase, 'core/consumer_base.rb'
+    autoload :Consumer, 'core/consumer.rb'
   end
 end
