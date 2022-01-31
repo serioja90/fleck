@@ -2,6 +2,12 @@
 
 ## develop ##
 
+- **BREAKING CHANGE** Updated minimum required Ruby version to >= 2.5.
+- **NEW** Refactore `Fleck::Consumer` in order to have a better code structure.
+- **NEW** Implemented response helpers, which allow to terminate the request with desired status code and message.
+- **NEW** Implemented action decorators, which allow to define an action and it's parameters directly before the method.
+- **NEW** Implemented action params automatic validation, which can be set by using action decorators.
+
 ## v1.0.1 (2 April 2020) ##
 
 - **BREAKING CHANGE** Updateg gemset, in order to be able to use new versions of Ruby.
