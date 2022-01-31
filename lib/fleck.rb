@@ -1,72 +1,81 @@
-require "logger"
-require "rainbow"
-require "rainbow/ext/string"
-require "bunny"
-require "thread_safe"
-require "securerandom"
-require "oj"
-require "ztimer"
-require "fleck/version"
-require "fleck/hash_with_indifferent_access"
-require "fleck/loggable"
-require "fleck/host_rating"
-require "fleck/configuration"
-require "fleck/consumer"
-require "fleck/client"
+# frozen_string_literal: true
 
+$LOAD_PATH << File.expand_path(__dir__)
+
+require 'English'
+require 'logger'
+require 'rainbow'
+require 'rainbow/ext/string'
+require 'bunny'
+require 'thread_safe'
+require 'securerandom'
+require 'oj'
+require 'ztimer'
+# require 'fleck/version'
+require 'fleck/utilities/hash_with_indifferent_access'
+# require 'fleck/loggable'
+# require 'fleck/host_rating'
+# require 'fleck/configuration'
+# require 'fleck/consumer'
+# require 'fleck/client'
+
+# `Fleck` module implements the features for `Fleck` configuration and messages production/consumption.
 module Fleck
+  autoload :VERSION, 'fleck/version.rb'
+  autoload :Loggable, 'fleck/loggable.rb'
+  autoload :Configuration, 'fleck/configuration.rb'
+  autoload :Core, 'fleck/core.rb'
+  autoload :Consumer, 'fleck/consumer.rb'
+  autoload :Client, 'fleck/client.rb'
+
   @config      = Configuration.new
   @consumers   = ThreadSafe::Array.new
   @connections = ThreadSafe::Hash.new
 
-  def self.configure
-    yield @config if block_given?
-    @config
-  end
+  class << self
+    attr_reader :config, :consumers
 
-  def self.logger
-    @config.logger
-  end
+    def configure
+      yield @config if block_given?
+      @config
+    end
 
-  def self.register_consumer(consumer_class)
-    unless @consumers.include?(consumer_class)
+    def logger
+      @config.logger
+    end
+
+    def register_consumer(consumer_class)
+      return if @consumers.include?(consumer_class)
+
       @consumers << consumer_class
     end
-  end
 
-  def self.connection(options = {})
-    opts = Fleck.config.default_options.merge(options)
-    key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
-    conn = @connections[key]
-    if !conn || conn.closed?
-      opts[:logger] = Fleck.logger.clone
-      opts[:logger].progname += "::Bunny"
-      logger.info "New connection #{key}"
-      conn = Bunny.new(opts)
-      conn.start
-      @connections[key] = conn
+    def connection(options = {})
+      opts = Fleck.config.default_options.merge(options)
+      key  = "ampq://#{opts[:user]}@#{opts[:host]}:#{opts[:port]}#{opts[:vhost]}"
+      conn = @connections[key]
+      if !conn || conn.closed?
+        opts[:logger] = Fleck.logger.clone
+        opts[:logger].progname += '::Bunny'
+        logger.info "New connection #{key}"
+        conn = Bunny.new(opts)
+        conn.start
+        @connections[key] = conn
+      end
+
+      conn
     end
-    return conn
-  end
 
-  def self.terminate
-    @connections.each do |key, connection|
-      begin
+    def terminate
+      @connections.each do |key, connection|
         Fleck.logger.info "Closing connection #{key}"
         connection.close
-      rescue => e
+      rescue StandardError => e
         Fleck.logger.error e.inspect
       end
+      @connections.clear
+
+      true
     end
-    @connections.clear
-
-    true
   end
-
-  private
-
-  class << self
-    attr_reader :config
-  end
-
 end

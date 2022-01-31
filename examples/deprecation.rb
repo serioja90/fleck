@@ -21,21 +21,14 @@ client = Fleck::Client.new(connection, "deprecation.example.queue", concurrency:
 class MyConsumer < Fleck::Consumer
   configure queue: 'deprecation.example.queue', concurrency: CONCURRENCY.to_i
 
-  def on_message(request, response)
-    case request.action
-    when 'hello' then hello
-    else
-      response.not_found!
-    end
-  end
-
+  action :hello
   def hello
     version = request.version || 'v1'
     case version.to_s
     when 'v1' then hello_v1
     when 'v2' then hello_v2
     else
-      response.not_found!
+      not_found!
     end
   end
 
@@ -43,11 +36,11 @@ class MyConsumer < Fleck::Consumer
 
   def hello_v1
     deprecated!
-    response.body = "#{request.params[:num]}. Hello V1!"
+    ok! "#{request.params[:num]}. Hello V1!"
   end
 
   def hello_v2
-    response.body = "#{request.params[:num] + 1}. Hello V2!"
+    ok! "#{request.params[:num] + 1}. Hello V2!"
   end
 end
 

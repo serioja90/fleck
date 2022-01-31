@@ -1,4 +1,7 @@
+# frozen_string_literal: true
 
+# `HashWithIndifferentAccess` extends `Hash` class and adds the possibility to access values
+# by using both string and symbol keys indifferently.
 class HashWithIndifferentAccess < Hash
   def initialize(original)
     super(nil)
@@ -22,21 +25,14 @@ class HashWithIndifferentAccess < Hash
   end
 
   def self.convert_value(value)
-    if value.is_a?(Hash)
+    case value
+    when Hash
       value.to_hash_with_indifferent_access
-    elsif value.is_a?(Array)
-      value.map!{|item| item.is_a?(Hash) || item.is_a?(Array) ? HashWithIndifferentAccess.convert_value(item) : item }
+    when Array
+      value.map! { |item| item.is_a?(Hash) || item.is_a?(Array) ? HashWithIndifferentAccess.convert_value(item) : item }
     else
       value
     end
-  end
-
-  def inspect
-    super
-  end
-
-  def to_s
-    super
   end
 
   protected
@@ -48,38 +44,37 @@ class HashWithIndifferentAccess < Hash
   end
 end
 
-
+# Open `Hash` class to add `#to_hash_with_indifferent_access` method and some filter features.
 class Hash
   def to_hash_with_indifferent_access
-    return HashWithIndifferentAccess.new(self)
+    HashWithIndifferentAccess.new(self)
   end
 
   def to_s
-    if @filtered
-      return self.dup.filter!.inspect
-    else
-      super
-    end
+    return dup.filter!.inspect if @filtered
+
+    super
   end
 
   def filtered!
     @filtered = true
-    self.keys.each do |key|
+    keys.each do |key|
       self[key].filtered! if self[key].is_a?(Hash)
     end
-    return self
+
+    self
   end
 
   def filter!
     filters = Fleck.config.filters
-    self.keys.each do |key|
+    keys.each do |key|
       if filters.include?(key.to_s)
-        self[key] = "[FILTERED]"
+        self[key] = '[FILTERED]'
       elsif self[key].is_a?(Hash)
         self[key] = self[key].dup.filter!
       end
     end
 
-    return self
+    self
   end
 end
