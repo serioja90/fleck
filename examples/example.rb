@@ -29,14 +29,16 @@ condition = ConditionVariable.new
 class First < Fleck::Consumer
   configure queue: QUEUE, concurrency: CONCURRENCY.to_i
 
-  def on_message
+  action :incr, 'Returns a message with incremented number'
+  param :num, type: 'number', required: true
+  def incr
     if rand > 0.1
       not_found! if request.action != 'incr'
 
       ok! "#{params[:num].to_i + 1}. Hello, World!"
     else
       logger.warn "REJECTING REQUEST {headers: #{headers}, params: #{params}"
-      response.reject!(requeue: true)
+      request.reject!(requeue: true)
     end
   end
 end

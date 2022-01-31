@@ -21,14 +21,7 @@ client = Fleck::Client.new(connection, "deprecation.example.queue", concurrency:
 class MyConsumer < Fleck::Consumer
   configure queue: 'deprecation.example.queue', concurrency: CONCURRENCY.to_i
 
-  def on_message
-    case request.action
-    when 'hello' then hello
-    else
-      not_found!
-    end
-  end
-
+  action :hello
   def hello
     version = request.version || 'v1'
     case version.to_s

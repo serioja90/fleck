@@ -31,17 +31,10 @@ condition = ConditionVariable.new
 class MyConsumer < Fleck::Consumer
   configure queue: QUEUE, concurrency: CONCURRENCY.to_i
 
-  def on_message
-    case request.action
-    when 'hello' then hello
-    else
-      not_found!
-    end
-  end
-
+  action :hello
   def hello
     sleep rand
-    ok! "#{request.params[:num] + 1}. Hello!"
+    ok! "#{params[:num] + 1}. Hello!"
   end
 end
 

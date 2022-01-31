@@ -29,8 +29,9 @@ condition = ConditionVariable.new
 class First < Fleck::Consumer
   configure queue: "example.queue", concurrency: CONCURRENCY.to_i, exchange_type: :fanout, exchange_name: 'fanout.example.queue'
 
-  def on_message
-    if request.action == "incr"
+  action :incr
+  def incr
+    if request.action == 'incr'
       ok! "#{request.params[:num].to_i + 1}. Hello, World!"
     else
       not_found!
@@ -40,7 +41,7 @@ end
 
 Thread.new do
   SAMPLES.times do |i|
-    client.request(action: 'incr', params: {num: i}, timeout: 60) do |request, response|
+    client.request(action: 'incr', params: { num: i }, timeout: 60) do |request, response|
       request.logger.debug response.body
       mutex.synchronize do
         count += 1
