@@ -23,14 +23,14 @@ class MyConsumer < Fleck::Consumer
   actions :quit
 
   initialize do
-    @value = "MY CONSUMER :) #{self.object_id}"
+    @value = "MY CONSUMER :) #{object_id}"
   end
 
   def quit
     logger.debug "Quit message received, but I'm goint to sleep for 2 seconds ..."
     sleep 2
     logger.debug "Let's terminate this example!"
-    terminate
+    Ztimer.async { self.class.terminate }
   end
 end
 

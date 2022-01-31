@@ -1,23 +1,27 @@
+# frozen_string_literal: true
 
+# Open `Fleck` module to add `Configuration` class implementation.
 module Fleck
+  # `Fleck::Configuration` implements a set of methods useful for `Fleck` clients and consumers configuration.
   class Configuration
+    autoload :HostRating, 'fleck/utilities/host_rating.rb'
 
     attr_reader :logfile, :loglevel, :progname, :hosts
     attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue,
                   :app_name, :filters
 
     def initialize
-      @logfile       = STDOUT
+      @logfile       = $stdout
       @loglevel      = ::Logger::INFO
-      @progname      = "Fleck"
-      @app_name      = $0
-      @default_host  = "127.0.0.1"
+      @progname      = 'Fleck'
+      @app_name      = $PROGRAM_NAME
+      @default_host  = '127.0.0.1'
       @default_port  = 5672
       @default_user  = nil
       @default_pass  = nil
-      @default_vhost = "/"
-      @default_queue = "default"
-      @filters       = ["password", "secret", "token"]
+      @default_vhost = '/'
+      @default_queue = 'default'
+      @filters       = %w[password secret token]
       @hosts         = []
       @credentials   = {}
     end
@@ -26,33 +30,24 @@ module Fleck
       args.flatten.each do |host|
         add_host host
       end
-      return @hosts
     end
 
     def add_host(data)
-      if data.is_a?(String)
-        host, port = data.split(":")
-        port = port ? port.to_i : 5672
-        @hosts << Fleck::HostRating.new(host: host, port: port)
-        @credentials["#{host}:#{port}"] ||= { user: @default_user, pass: @default_pass }
-      elsif data.is_a?(Hash)
-        data = data.to_hash_with_indifferent_access
-        host = data[:host] || @default_host
-        port = data[:port] || @default_port
-        @hosts << Fleck::HostRating.new(host: data[:host] || @default_host, port: data[:port] || @default_port)
-        @credentials["#{host}:#{port}"] ||= { user: data[:user] || @default_user, pass: data[:pass] || @default_pass }
+      case data
+      when String then add_host_from_string(data)
+      when Hash then add_host_from_hash(data)
       else
-        raise ArgumentError.new("Invalid host type #{data.inspect}: String or Hash expected")
+        raise ArgumentError, "Invalid host type #{data.inspect}: String or Hash expected"
       end
     end
 
     def default_options
-      best = @hosts.sort.first
+      best = @hosts.min
       opts = {}
 
       host = best ? best.host : @default_host
       port = best ? best.port : @default_port
-      credentials = @credentials["#{host}:#{port}"] || {user: @default_user, pass: @default_pass}
+      credentials = @credentials["#{host}:#{port}"] || { user: @default_user, pass: @default_pass }
 
       opts[:host]  = host
       opts[:port]  = port
@@ -61,49 +56,41 @@ module Fleck
       opts[:vhost] = @default_vhost
       opts[:queue] = @default_queue
 
-      return opts
+      opts
     end
 
     def logfile=(new_logfile)
-      if @logfile != new_logfile
-        @logfile = new_logfile
-        reset_logger
-      end
+      return unless @logfile != new_logfile
 
-      return @logfile
+      @logfile = new_logfile
+      reset_logger
     end
 
     def loglevel=(new_loglevel)
       @loglevel = new_loglevel
       @logger.level = @loglevel if @logger
-
-      return @loglevel
     end
 
     def progname=(new_progname)
       @progname = new_progname
       @logger.progname = @progname if @logger
-
-      return @progname
     end
 
     def logger
-      return @logger || reset_logger
+      @logger || reset_logger
     end
 
     def logger=(new_logger)
+      @logger&.close
+
       if new_logger.nil?
-        @logger.close if @logger
         @logger = ::Logger.new(nil)
       else
-        @logger.close if @logger
         @logger = new_logger.clone
         @logger.formatter = formatter
         @logger.progname  = @progname
         @logger.level     = @loglevel
       end
-
-      return @logger
     end
 
     def reset_logger
@@ -111,34 +98,52 @@ module Fleck
       new_logger.formatter = formatter
       new_logger.progname  = @progname
       new_logger.level     = @loglevel
-      @logger.close if @logger
+      @logger&.close
       @logger = new_logger
 
-      return @logger
+      @logger
     end
 
     def formatter
       return @formatter if @formatter
 
       @formatter = proc do |severity, datetime, progname, msg|
-        color = :blue
-        case severity
-        when 'DEBUG'
-          color = "#512DA8"
-        when 'INFO'
-          color = "#33691E"
-        when 'WARN'
-          color = "#E65100"
-        when 'ERROR', 'FATAL'
-          color = "#B71C1C"
-        else
-          color = "#00BCD4"
-        end
-        "[#{datetime.strftime('%F %T.%L')}]".color(:cyan) + "(#{$$})".color(:blue) + "|#{severity}|".color(color) +
-        (progname ? "<#{progname}>".color(:yellow) : "")  + " #{msg}\n"
+        color = severity_color(severity)
+        "[#{datetime.strftime('%F %T.%L')}]".color(:cyan) +
+          "(#{$PID})".color(:blue) +
+          "|#{severity}|".color(color) +
+          (progname ? "<#{progname}>".color(:yellow) : '') +
+          " #{msg}\n"
       end
 
-      return @formatter
+      @formatter
+    end
+
+    private
+
+    def add_host_from_string(data)
+      host, port = data.split(':')
+      port = port ? port.to_i : 5672
+      @hosts << Fleck::HostRating.new(host: host, port: port)
+      @credentials["#{host}:#{port}"] ||= { user: @default_user, pass: @default_pass }
+    end
+
+    def add_host_from_hash(data)
+      data = data.to_hash_with_indifferent_access
+      host = data[:host] || @default_host
+      port = data[:port] || @default_port
+      @hosts << Fleck::HostRating.new(host: host, port: port)
+      @credentials["#{host}:#{port}"] ||= { user: data[:user] || @default_user, pass: data[:pass] || @default_pass }
+    end
+
+    def severity_color(severity)
+      case severity
+      when 'DEBUG' then '#512DA8'
+      when 'INFO' then '#33691E'
+      when 'WARN' then '#E65100'
+      when 'ERROR', 'FATAL' then '#B71C1C'
+      else '#00BCD4'
+      end
     end
   end
 end
