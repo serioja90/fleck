@@ -15,22 +15,7 @@ module Fleck
           @errors     = []
           @headers    = {}
           @body       = nil
-          @rejected   = false
-          @requeue    = false
           @deprecated = false
-        end
-
-        def reject!(requeue: false)
-          @rejected = true
-          @requeue  = requeue
-        end
-
-        def rejected?
-          @rejected
-        end
-
-        def requeue?
-          @requeue
         end
 
         def errors?

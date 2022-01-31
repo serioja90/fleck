@@ -13,9 +13,15 @@ module Fleck
       autoload :Decorators, 'consumer/decorators.rb'
       autoload :HelpersDefiners, 'consumer/helpers_definers.rb'
       autoload :Logger, 'consumer/logger.rb'
+
       autoload :Request, 'consumer/request.rb'
       autoload :Response, 'consumer/response.rb'
 
+      autoload :ActionHeader, 'consumer/action_header.rb'
+      autoload :ActionParam, 'consumer/action_param.rb'
+      autoload :Validation, 'consumer/validation.rb'
+
+      include Fleck::Loggable
       include Logger
       include Actions
       include Configuration
@@ -25,12 +31,11 @@ module Fleck
 
       require_relative 'consumer/response_helpers'
 
-      attr_accessor :connection, :channel, :queue, :publisher, :consumer_tag, :request, :subscription, :exchange
+      attr_accessor :connection, :channel, :queue, :publisher, :consumer_tag, :request, :subscription, :exchange,
+                    :consumer_id
 
       def initialize(consumer_id = nil)
-        @__consumer_id = consumer_id
-        @__lock         = Mutex.new
-        @__lounger      = ConditionVariable.new
+        self.consumer_id = consumer_id
 
         instance_eval(&self.class.initialize_block) if self.class.initialize_block
 
@@ -38,19 +43,6 @@ module Fleck
 
         at_exit do
           terminate
-        end
-      end
-
-      def consumer_id
-        @__consumer_id
-      end
-
-      def on_message
-        method_name = actions[request.action.to_s]
-        if method_name
-          send(method_name)
-        else
-          not_found!
         end
       end
 
@@ -128,7 +120,7 @@ module Fleck
         self.request = Request.new(metadata, payload, delivery_info)
 
         catch(INTERRUPT_NAME) do
-          on_message unless request.failed?
+          execute_action! unless request.failed?
         end
       rescue StandardError => e
         log_error(e)
@@ -139,17 +131,20 @@ module Fleck
       end
 
       def send_response!
-        return reject_request! if response.rejected?
+        return reject_request! if request.rejected?
 
         logger.debug "Sending response: #{response}"
-        return logger.warn "Channel already closed! The response #{request.id} is going to be dropped." if channel.closed?
+
+        if channel.closed?
+          return logger.warn "Channel already closed! The response #{request.id} is going to be dropped."
+        end
 
         publish_response!
         request.processed!
       end
 
       def reject_request!
-        channel.reject(request.delivery_tag, response.requeue?)
+        channel.reject(request.delivery_tag, request.requeue?)
       end
 
       def publish_response!

@@ -45,7 +45,7 @@ module Fleck
           end
 
           def final_response_status
-            return 406 if response.rejected?
+            return 406 if request.rejected?
             return 503 if channel.closed?
 
             response.status

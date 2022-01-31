@@ -25,13 +25,15 @@ module Fleck
             end
           end
 
-          def register_action(action, method_name)
+          def register_action(action, method_name, options = {})
             if Fleck::Consumer.instance_methods.include?(method_name.to_s.to_sym)
               raise ArgumentError, "Cannot use `:#{method_name}` method as an action, " \
                                     'because it is reserved for Fleck::Consumer internal stuff!'
             end
 
-            actions_map[action.to_s] = method_name.to_s
+            options[:method_name] = method_name.to_s
+            options[:params] ||= {}
+            actions_map[action.to_s] = options
           end
         end
 
@@ -39,6 +41,33 @@ module Fleck
         module InstanceMethods
           def actions
             @actions ||= self.class.actions_map
+          end
+
+          protected
+
+          def execute_action!
+            action_name = request.action.to_s
+            action = actions[action_name]
+            unless action
+              message = "Action #{action_name.inspect} not found!"
+              not_found! error: message, body: [
+                { type: 'action', name: action_name, value: action_name, error: 'not_found', message: message }
+              ]
+            end
+
+            # iterate over action params and use param options to validate incoming request params.
+            action[:params].each { |_, param| validate_action_param!(param) }
+
+            send(action[:method_name])
+          end
+
+          def validate_action_param!(param)
+            validation = param.validate(request.params[param.name])
+            unless validation.valid?
+              bad_request! error: "Invalid param value: #{param.name} = #{validation.value.inspect}",
+                           body: validation.errors
+            end
+            request.params[param.name] = validation.value
           end
         end
       end

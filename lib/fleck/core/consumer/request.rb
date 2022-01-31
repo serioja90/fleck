@@ -29,6 +29,8 @@ module Fleck
           @ip            = nil
           @params        = {}
           @failed        = false
+          @rejected      = false
+          @requeue       = false
 
           parse_request!
         end
@@ -43,6 +45,20 @@ module Fleck
 
         def failed?
           @failed
+        end
+
+        def reject!(requeue: false)
+          @rejected = true
+          @requeue  = requeue
+          processed!
+        end
+
+        def rejected?
+          @rejected
+        end
+
+        def requeue?
+          @requeue
         end
 
         protected

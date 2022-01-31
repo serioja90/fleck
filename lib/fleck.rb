@@ -33,7 +33,7 @@ module Fleck
   @connections = ThreadSafe::Hash.new
 
   class << self
-    attr_reader :config
+    attr_reader :config, :consumers
 
     def configure
       yield @config if block_given?
