@@ -2,7 +2,7 @@
 
 lib = File.expand_path(__dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'fleck/version'
+require 'lib/fleck/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'fleck'
