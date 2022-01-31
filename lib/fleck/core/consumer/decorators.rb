@@ -13,7 +13,6 @@ module Fleck
 
         # Defines class methods to import when `Decorators` module is imported.
         module ClassMethods
-          # TODO: implement the feature for action decorators
           def method_added(name)
             super(name)
 
@@ -55,7 +54,8 @@ module Fleck
           end
 
           def header(name, options = {})
-            method_options[:headers][name] = ActionParam.new(name, options[:type], options)
+            raise 'Not Implemented'
+            # method_options[:headers][name] = ActionParam.new(name, options[:type], options)
           end
 
           protected
