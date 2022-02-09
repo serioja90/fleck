@@ -24,9 +24,10 @@ module Fleck
           end
 
           def success_method(name, code)
-            define_method(name) do |body = nil, interrupt: true|
+            define_method(name) do |*args|
+              interrupt = (args[1] ? args[1][:interrupt] : true)
               response.status = code
-              response.body = body
+              response.body = args[0]
               throw INTERRUPT_NAME if interrupt
             end
           end
