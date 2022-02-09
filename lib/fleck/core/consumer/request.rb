@@ -19,8 +19,8 @@ module Fleck
           @app_id        = metadata[:app_id]
           @reply_to      = @metadata.reply_to
           @payload       = payload
-          @exchange      = delivery_info.exchange.inspect
-          @queue         = delivery_info.routing_key.inspect
+          @exchange      = delivery_info.exchange
+          @queue         = delivery_info.routing_key
           @delivery_tag  = delivery_info.delivery_tag
           @data          = {}
           @headers       = (@metadata.headers || {}).to_hash_with_indifferent_access
@@ -61,13 +61,24 @@ module Fleck
           @requeue
         end
 
+        def log_headers_and_params!
+          queue_name = "(#{@exchange == '' ? @queue : "#{@queue}@#{@exchange}"})".color(:red)
+          endpoint = "/#{action} :#{@version || 'v1'}".color(:red)
+          message = "\n" \
+                    "#{ip} - #{queue_name} #{endpoint} [#{@id}]\n" \
+                    "  ~ headers ~ #{headers.inspect.color(:green)}\n" \
+                    "  @params #{params.inspect.color(:green)}"
+          logger.debug message
+        end
+
         protected
 
         def parse_request!
           @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access.filtered!
           @headers.merge!(@data['headers'] || {}).filtered!
 
-          logger.debug "Processing request (exchange: #{@exchange}, queue: #{@queue}, options: #{@headers}, message: #{@data})"
+          logger.debug "Request (exchange: #{@exchange.inspect}, queue: #{@queue.inspect}, " \
+                       "options: #{@headers}, message: #{@data})"
 
           @action            ||= @headers['action']
           @headers['action'] ||= @action

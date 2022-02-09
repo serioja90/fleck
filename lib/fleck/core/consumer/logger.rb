@@ -67,7 +67,7 @@ module Fleck
 
           def exchange_and_queue_name
             ex_name = rmq_exchange_name.to_s == '' ? ''.inspect : rmq_exchange_name
-            "(#{ex_name.to_s.inspect}|#{exchange_type_code}|#{queue_name}) "
+            "(#{ex_name}|#{exchange_type_code}|#{queue_name}) "
           end
 
           def request_metadata
