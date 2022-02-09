@@ -49,6 +49,7 @@ module Fleck
             action_name = request.action.to_s
             action = actions[action_name]
             unless action
+              request.log_headers_and_params!
               message = "Action #{action_name.inspect} not found!"
               not_found! error: message, body: [
                 { type: 'action', name: action_name, value: action_name, error: 'not_found', message: message }
@@ -58,12 +59,14 @@ module Fleck
             # iterate over action params and use param options to validate incoming request params.
             action[:params].each { |_, param| validate_action_param!(param) }
 
+            request.log_headers_and_params!
             send(action[:method_name])
           end
 
           def validate_action_param!(param)
             validation = param.validate(request.params[param.name])
             unless validation.valid?
+              request.log_headers_and_params!
               bad_request! error: "Invalid param value: #{param.name} = #{validation.value.inspect}",
                            body: validation.errors
             end

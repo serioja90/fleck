@@ -28,8 +28,9 @@ class MyConsumer < Fleck::Consumer
   end
 
   action 'ciao', "An action which returns 'Ciao'"
+  param :world, type: 'boolean', required: true, default: false
   def my_custom_method
-    ok! 'Ciao!'
+    ok! params[:world] ? 'Ciao, Mondo!' : 'Ciao!'
   end
 
   action :aloha
@@ -47,9 +48,9 @@ end
 actions = %i[hello ciao aloha not_an_action]
 
 SAMPLES.to_i.times do |num|
-  action = actions[(rand * actions.size).to_i]
+  action = actions.sample
   name = ['John Doe', 'Willie Wonka', 'Billie Smith'].sample
-  client.request(action: action, params: { num: num, name: name, number: rand * 100 }, timeout: 5) do |_, response|
+  client.request(action: action, params: { num: num, name: name, number: rand * 100, world: %w[yes no].sample }, timeout: 5) do |_, response|
     if response.status == 200
       Fleck.logger.info "ACTION: (#{action.inspect}) #{response.body}"
     else
