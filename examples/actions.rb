@@ -24,7 +24,7 @@ class MyConsumer < Fleck::Consumer
 
   action 'hello', "An action which returns 'Hello'"
   def hello
-    ok! 'Hello!'
+    ok! result: 'Hello', message: 'Ciao'
   end
 
   action 'ciao', "An action which returns 'Ciao'"
@@ -52,9 +52,9 @@ SAMPLES.to_i.times do |num|
   name = ['John Doe', 'Willie Wonka', 'Billie Smith'].sample
   client.request(action: action, params: { num: num, name: name, number: rand * 100, world: %w[yes no].sample }, timeout: 5) do |_, response|
     if response.status == 200
-      Fleck.logger.info "ACTION: (#{action.inspect}) #{response.body}"
+      Fleck.logger.info "ACTION: (#{action.inspect}) #{response.body.inspect}"
     else
-      Fleck.logger.error "ACTION: (#{action.inspect}) #{response.errors.join(', ')} --- #{response.body}"
+      Fleck.logger.error "ACTION: (#{action.inspect}) #{response.errors.join(', ')} --- #{response.body.inspect}"
     end
   end
 end
