@@ -23,6 +23,7 @@ require 'fleck/utilities/hash_with_indifferent_access'
 module Fleck
   autoload :VERSION, 'fleck/version.rb'
   autoload :Loggable, 'fleck/loggable.rb'
+  autoload :HostRating, 'fleck/utilities/host_rating.rb'
   autoload :Configuration, 'fleck/configuration.rb'
   autoload :Core, 'fleck/core.rb'
   autoload :Consumer, 'fleck/consumer.rb'
