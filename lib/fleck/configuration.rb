@@ -4,8 +4,6 @@
 module Fleck
   # `Fleck::Configuration` implements a set of methods useful for `Fleck` clients and consumers configuration.
   class Configuration
-    autoload :HostRating, 'fleck/utilities/host_rating.rb'
-
     attr_reader :logfile, :loglevel, :progname, :hosts
     attr_accessor :default_user, :default_pass, :default_host, :default_port, :default_vhost, :default_queue,
                   :app_name, :filters
