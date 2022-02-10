@@ -64,41 +64,39 @@ module Fleck
     ensure
       @updated_at = Time.now
     end
-  end
 
-  private
+    # Use a socket to test connection latency.
+    def measure_latency
+      socket = create_socket
 
-  # Use a socket to test connection latency.
-  def measure_latency
-    socket = create_socket
+      started_at = Time.now.to_f
+      begin
+        socket.connect_nonblock(sock_addr)
+      rescue IO::WaitWritable
+        IO.select(nil, [socket], nil, CONN_TIMEOUT) or raise Timeout::Error
+      end
 
-    started_at = Time.now.to_f
-    begin
-      socket.connect_nonblock(sock_addr)
-    rescue IO::WaitWritable
-      IO.select(nil, [socket], nil, CONN_TIMEOUT) or raise Timeout::Error
+      (Time.now.to_f - started_at) * 1000 # ms
+    ensure
+      socket&.close
     end
 
-    (Time.now.to_f - started_at) * 1000 # ms
-  ensure
-    socket&.close
-  end
+    # Create a new socket for connection test.
+    def create_socket
+      socket = Socket.new(:AF_INET, :SOCK_STREAM, 0)
+      socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
 
-  # Create a new socket for connection test.
-  def create_socket
-    socket = Socket.new(:AF_INET, :SOCK_STREAM, 0)
-    socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+      socket
+    end
 
-    socket
-  end
+    # Resolve domain name in order to obtain IP address to test.
+    def sock_addr
+      return @sock_addr if @sock_addr
 
-  # Resolve domain name in order to obtain IP address to test.
-  def sock_addr
-    return @sock_addr if @sock_addr
+      addr = Socket.getaddrinfo(@host, nil)
+      @sock_addr = Socket.pack_sockaddr_in(@port, addr[0][3])
 
-    addr = Socket.getaddrinfo(@host, nil)
-    @sock_addr = Socket.pack_sockaddr_in(@port, addr[0][3])
-
-    @sock_addr
+      @sock_addr
+    end
   end
 end
