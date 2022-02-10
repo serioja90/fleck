@@ -2,5 +2,5 @@
 
 # Open `Fleck` module to set `VERSION` constant.
 module Fleck
-  VERSION = '2.1.1'
+  VERSION = '2.1.2'
 end
