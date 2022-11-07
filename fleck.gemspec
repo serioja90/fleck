@@ -34,4 +34,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency             'rainbow', '~> 2.2'
   spec.add_dependency             'thread_safe', '~> 0.3'
   spec.add_dependency             'ztimer', '~> 0.6'
+  spec.add_dependency             'thor', '~> 1.2'
 end
