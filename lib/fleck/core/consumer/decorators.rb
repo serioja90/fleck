@@ -49,11 +49,11 @@ module Fleck
             method_options[:description] = description if description
           end
 
-          def param(name, options = {})
-            method_options[:params][name] = ActionParam.new(name, options[:type], options)
+          def param(name, modifier = nil, **options)
+            method_options[:params][name] = ActionParam.new(name, modifier, **options)
           end
 
-          def header(name, options = {})
+          def header(name, modifier = nil, **options)
             raise 'Not Implemented'
             # method_options[:headers][name] = ActionParam.new(name, options[:type], options)
           end
