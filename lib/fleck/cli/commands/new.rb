@@ -8,7 +8,7 @@ module Fleck
     attr_accessor :app_name, :options, :description
 
     def self.source_root
-      File.expand_path('templates', __dir__)
+      File.expand_path('new/templates', __dir__)
     end
 
     def initialize(app_name, options)

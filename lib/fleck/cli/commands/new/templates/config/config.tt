@@ -23,8 +23,8 @@ Config.env      = ENV.fetch('RAKE_ENV', 'production')
 
 # Service configurations
 # ======================
-Config.app_name           = ENV.fetch('APP_NAME', %q(gigi))
-Config.title              = ENV.fetch('TITLE', %q(gigi app))
+Config.app_name           = ENV.fetch('APP_NAME', %(<%= app_name %>))
+Config.title              = ENV.fetch('TITLE', %(<%= description %>))
 Config.pidfile            = ENV.fetch('PIDFILE', "#{Config.root}/service.pid")
 Config.logfile            = ENV.fetch('LOGFILE', "#{Config.root}/log/service.log")
 Config.loglevel           = LOG_LEVELS[ENV['LOGLEVEL'].to_s.to_sym] || (ENV['LOGLEVEL'] || Logger::INFO).to_i
@@ -43,7 +43,7 @@ Config.db.sslmode            = ENV.fetch('DB_SSLMODE', 'disable')
 Config.db.max_connections    = ENV.fetch('DB_MAX_CONNECTIONS', [Config.concurrency, 4].min)
 Config.db.migrate            = ENV['DB_MIGRATE'].is_true?
 Config.db.migrations_path    = "#{Config.root}/db/migrations"
-Config.db.schema_table       = :gigi_schema_info
+Config.db.schema_table       = %(<%= snake_case_name %>_schema_info)
 # Check if connection is valid before executing the query after 30 seconds of inactivity
 Config.db.conn_check_timeout = ENV.fetch('DB_CONN_CHECK_TIMEOUT', 30).to_f
 

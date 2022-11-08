@@ -1,0 +1,101 @@
+# frozen_string_literal: true
+
+require 'optparse'
+
+# Parse command-line options
+options = OptionParser.new do |opts|
+  # Set a banner for the help message
+  opts.banner = <<~DOC
+    #{Config.title} v#{Config.version}
+
+    Usage:
+      ruby #{$PROGRAM_NAME.split('/').last} [options]
+  DOC
+
+  opts.separator('Options:')
+  opts.on(
+    '-n', '--name=NAME', String,
+    "Set a custom process title (default: #{Config.app_name.inspect})"
+  ) { |v| Config.app_name = v }
+
+  opts.on(
+    '--pidfile=PIDFILE', String,
+    "Full path to service pid file (default: #{Config.pidfile.inspect})"
+  ) { |v| Config.pidfile = v }
+
+  opts.on('-l', '--logfile=LOGFILE',           String,     "Set log file name (default: #{Config.logfile})")                                       { |v| Config.logfile         = v }
+  opts.on('-L', '--loglevel=LOGLEVEL',         LOG_LEVELS, "Set log level (default: #{LOG_LEVELS.detect{|k,v| v == Config.loglevel}[0].inspect})") { |v| Config.loglevel        = v }
+  opts.on('-c', '--concurrency=CONCURRENCY',   Integer,    "Set consumers concurrency (default: #{Config.concurrency.inspect})")                   { |v| Config.concurrency     = v }
+  opts.on('-e', '--environment="SERIVE_ENV',   String,     "Set service environment (default: #{Config.env.inspect})")                             { |v| Config.env = v }
+  opts.on('-i', '--[no-]interactive',                      "Launch service in interactive mode (default: #{Config.interactive.inspect})")          { |v| Config.interactive     = v }
+
+  opts.separator("\nDatabase options:")
+  opts.on('--db-host=DB_HOST',                       String,  "Set database host (default: #{Config.db.host.inspect})") { |v| Config.db.host = v }
+  opts.on('--db-port=DB_PORT',                       Integer, "Set database port (default: #{Config.db.port.inspect})") { |v| Config.db.port = v }
+  opts.on('--db-name=DB_NAME',                       String,  "Set database name (default: #{Config.db.name.inspect})") { |v| Config.db.name = v }
+  opts.on('--db-user=DB_USER',                       String,  "Set database user (default: #{Config.db.user.inspect})") { |v| Config.db.user = v }
+  opts.on('--db-pass=DB_PASS',                       String,  "Set database pass (default: #{Config.db.pass.inspect})") { |v| Config.db.pass = v }
+  opts.on('--db-sslmode=DB_SSLMODE',                 String,  "Set sslmode to use on connection (default: #{Config.db.sslmode.inspect})")                            { |v| Config.db.sslmode         = v }
+  opts.on('--db-max-connections=DB_MAX_CONNECTIONS', String,  "Set the maximum number of connections to PostgreSQL (default: #{Config.db.max_connections.inspect})") { |v| Config.db.max_connections = v }
+
+  opts.separator("\nRabbitMQ options:")
+  opts.on('--rmq-host=RMQ_HOST',                           String,  "Set RabbitMQ host (default: #{Config.rabbitmq.host.inspect})")                                { |v| Config.rabbitmq.host              = v }
+  opts.on('--rmq-hosts=RMQ_HOSTS',                         String,  "Set RabbitMQ hosts list (default: #{Config.rabbitmq.hosts.inspect})")                         { |v| Config.rabbitmq.hosts             = v.split(",").map(&:strip) }
+  opts.on('--rmq-port=RMQ_PORT',                           Integer, "Set RabbitMQ port (default: #{Config.rabbitmq.port.inspect})")                                { |v| Config.rabbitmq.port              = v }
+  opts.on('--rmq-vhost=RMQ_VHOST',                         String,  "Set RabbitMQ vhost (default: #{Config.rabbitmq.vhost.inspect})")                              { |v| Config.rabbitmq.vhost             = v }
+  opts.on('--rmq-user=RMQ_USER',                           String,  "Set RabbitMQ user (default: #{Config.rabbitmq.user.inspect})")                                { |v| Config.rabbitmq.user              = v }
+  opts.on('--rmq-pass=RMQ_PASS',                           String,  "Set RabbitMQ pass (default: #{Config.rabbitmq.pass.inspect})")                                { |v| Config.rabbitmq.pass              = v }
+
+  opts.separator("\nKafka options:")
+  opts.on('--kafka-hosts=KAFKA_HOSTS',                             String, "Set kafka hosts host (default: #{Config.kafka.hosts.inspect})")                               { |v| Config.kafka.hosts          = v.split(",").map{|h| h.strip } }
+  opts.on('--kafka-client-id=KAFKA_CLIENT_ID',                     String, "Set kafka client_id (default: #{Config.kafka.client_id.inspect})")                            { |v| Config.kafka.client_id = v }
+  opts.on('--[no-]kafka-ssl-enabled',                                      "Enable kafka client SSL (default: #{Config.kafka.ssl_enabled.inspect})")                      { |v| Config.kafka.ssl_enabled = v }
+  opts.on('--kafka-ssl-ca-cert=KAFKA_SSL_CA_CERT',                 String, "Set path to kafka client SSL CA cert(default: #{Config.kafka.ssl_ca_cert.inspect})")          { |v| Config.kafka.ssl_ca_cert = v }
+  opts.on('--kafka-ssl-client-cert=KAFKA_SSL_CLIENT_CERT',         String, "Set path to kafka client SSL cert(default: #{Config.kafka.ssl_client_cert.inspect})")         { |v| Config.kafka.ssl_client_cert = v }
+  opts.on('--kafka-ssl-client-cert-key=KAFKA_SSL_CLIENT_CERT_KEY', String, "Set path to kafka client SSL cert key(default: #{Config.kafka.ssl_client_cert_key.inspect})") { |v| Config.kafka.ssl_client_cert_key = v }
+  opts.on('--kafka-sasl-mechanism=KAFKA_SASL_MECHANISM',           String, "Set kafka SASL authentication mechanism (default: #{Config.kafka.mechanism.inspect})")        { |v| Config.kafka.sasl_mechanism = v }
+  opts.on('--kafka-sasl-username=KAFKA_SASL_USERNAME',             String, "Set kafka SASL username (default: #{Config.kafka.username.inspect})")                         { |v| Config.kafka.sasl_username  = v }
+  opts.on('--kafka-sasl-password=KAFKA_SASL_PASSWORD',             String, "Set kafka SASL password (default: #{Config.kafka.password.inspect})")                         { |v| Config.kafka.sasl_password  = v }
+
+  opts.separator("\nOther:")
+  opts.on('-v', '--version', "Show version number") do
+    puts Config.version
+    exit
+  end
+
+  opts.on('-h', '--help', "Show this help message") do
+    puts opts.help
+    exit
+  end
+end
+
+begin
+  options.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument, OptionParser::InvalidArgument => e
+  puts e.to_s + "\n\n"
+  puts options.help
+  exit
+end
+
+# Allow to use STDOUT as service output
+Config.logfile = STDOUT if Config.logfile.upcase == "STDOUT"
+
+# Set process name
+Process.setproctitle("#{Config.app_name} (v#{Config.version})")
+
+# Lock configuration to the current version
+Config.lock!
+
+at_exit do
+  if File.exists?(Config.pidfile)
+    content = IO.read(Config.pidfile)
+    content = content.gsub("#{$$}\n",'')
+    if content.strip == ''
+      File.delete(Config.pidfile)
+    else
+      IO.write(Config.pidfile, content)
+    end
+  end
+end
+
+File.open(Config.pidfile, 'a') { |file| file.puts $$ }
