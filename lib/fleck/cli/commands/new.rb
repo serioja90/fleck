@@ -4,7 +4,6 @@ module Fleck
   # Implements the command for new Fleck app creation.
   class NewApp < Thor
     include Thor::Actions
-
     attr_accessor :app_name, :options, :description
 
     def self.source_root
@@ -12,11 +11,13 @@ module Fleck
     end
 
     def initialize(app_name, options)
+      super()
+
       @app_name = app_name
       @options = options
       @description = "#{app_name} app"
       self.destination_root = "#{Dir.pwd}/#{app_name}"
-      run
+      create_app!
     end
 
     private
@@ -25,12 +26,15 @@ module Fleck
       Thor::Util.snake_case(app_name)
     end
 
-    def run
+    def create_app!
       say "Going to generate a new Fleck app #{app_name.inspect}..."
       self.description = ask('Description: ', Thor::Shell::Color::BLUE, default: description)
 
       create_app_directories
       generate_files
+      install_gems
+
+      Dir.chdir(destination_root)
     end
 
     def create_app_directories
@@ -48,8 +52,15 @@ module Fleck
     def generate_files
       template('Gemfile.tt', 'Gemfile')
       template('service.tt', "#{app_name}.rb")
+      template('boot.tt', 'boot.rb')
       template('config/version.tt', 'config/version.rb')
       template('config/config.tt', 'config/config.rb')
+    end
+
+    def install_gems
+      inside app_name do
+        run 'bundle install'
+      end
     end
   end
 end

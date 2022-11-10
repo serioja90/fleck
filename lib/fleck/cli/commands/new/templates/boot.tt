@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('Gemfile', __dir__)
+
+require 'bundler/setup' # Set up gems listed in the Gemfile.
+
+Bundler.require(:default)
+
+# Load `Fleck::Application` which we'll need to start our application
+require 'fleck/application'
+
+Fleck.application.run!
