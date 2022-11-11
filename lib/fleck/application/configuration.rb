@@ -2,49 +2,76 @@
 
 $LOAD_PATH << File.expand_path(__dir__)
 
+require 'configatron/core'
+require 'erb'
+require 'yaml'
+
 module Fleck
   class Application
     # A class to define application configurations.
     class Configuration
-      attr_accessor :env
-
-      APP_BOOT_FILE = 'boot.rb'
+      attr_reader :env, :root
 
       def initialize
         @args = ARGV.dup
-        @env = ENV['FLECK_ENV'] || ENV['RACK_ENV'] || 'development'
-        @root = find_root
+        @store = {}
 
-        puts "Args: #{@args.inspect}"
+        detect_environment!
+        find_root!
+        detect_command!(@args.shift)
 
-        puts 'Created new Fleck configuration'
+        set_configs!
+
+        puts inspect
       end
 
-      private
+      def app?
+        @command == 'start'
+      end
 
-      def find_root
-        # Start from current working directory
-        current_path = Dir.pwd
+      def console?
+        @command == 'console' || command == 'c'
+      end
 
-        # Check if current directory is fleck app directory root or go up and check parent directory
-        loop do
-          # Break when fleck app root found
-          break if File.exist?(File.join(current_path, APP_BOOT_FILE))
-
-          # Move one level up (to parent directory)
-          current_path = File.expand_path('..', current_path)
-
-          # Break when reached system root directory
-          break if current_path == '/'
+      def config_for(name, config_file, warnings: false)
+        unless File.exist?(config_file)
+          warn "WARNING: #{config_file.inspect} config file was not found" if warnings
+          return
         end
 
-        # Check if current_path is fleck app root directory and raise and error if
-        # fleck app root directory not found
-        root = File.exist?(File.join(current_path, APP_BOOT_FILE)) ? current_path : nil
-        raise 'Could not find Fleck app root directory' unless root
+        interpolated_config = ERB.new(File.read(config_file)).result
+        config = YAML.safe_load(interpolated_config, aliases: true)
+        @store[name] ||= Configatron::RootStore.new
+        @store[name].configure_from_hash(config[env]) if config[env]
+      end
 
-        # Return fleck app root directory
-        Pathname.new File.realpath(root)
+      protected
+
+      def detect_environment!
+        @env = ENV['FLECK_ENV'] || ENV['RACK_ENV'] || 'development'
+      end
+
+      def find_root!
+        @root = Fleck.find_app_root
+      end
+
+      def detect_command!(command)
+        @command = command.split(':').first if command
+        @subcommand = command.split(':')[1] if command&.include?(':')
+      end
+
+      def set_configs!
+        config_for(:main, "#{root}/config/app.example.yml", warnings: true)
+        config_for(:main, "#{root}/config/app.yml")
+
+        config_for(:rmq, "#{root}/config/rabbitmq.example.yml", warnings: true)
+        config_for(:rmq, "#{root}/config/rabbitmq.yml")
+
+        config_for(:db, "#{root}/config/database.example.yml", warnings: true)
+        config_for(:db, "#{root}/config/database.yml")
+
+        config_for(:kafka, "#{root}/config/kafka.example.yml", warnings: true)
+        config_for(:kafka, "#{root}/config/kafka.yml")
       end
     end
   end

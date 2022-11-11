@@ -1,0 +1,28 @@
+# This configuration file has been automatically generated and should be used as
+# a template for the real app configuration. Just make a copy of this file and call
+# it `app.yml`.
+#
+# Example:
+# `cp app.example.yml app.yml`
+#
+# If you want to add dynamic configuration to configuration file (like using values passed through
+# environment variables) you can use ERB interpolation. For example:
+#
+# default: &default
+#   my_custom_setting: <%%= ENV.fetch('CUSTOM_SETTING', 'default value') %>
+
+default: &default
+  app_name: <%= app_name %>
+  title: <%= description %>
+  timezone: UTC
+  pidfile: 'service.pid'
+  logfile: 'log/service.log'
+
+development:
+  <<: *default
+
+production:
+  <<: *default
+
+test:
+  <<: *default

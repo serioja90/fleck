@@ -52,9 +52,10 @@ module Fleck
     def generate_files
       template('Gemfile.tt', 'Gemfile')
       template('service.tt', "#{app_name}.rb")
-      template('boot.tt', 'boot.rb')
-      template('config/version.tt', 'config/version.rb')
+      template('boot.rb.tt', 'boot.rb')
+      template('config/version.rb.tt', 'config/version.rb')
       template('config/config.tt', 'config/config.rb')
+      template('config/app.example.yml.tt', 'config/app.example.yml')
     end
 
     def install_gems
