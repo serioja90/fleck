@@ -13,12 +13,13 @@ module Fleck
           'hash' => 'object'
         }.freeze
 
-        attr_reader :name, :type, :options
+        attr_reader :name, :type, :modifier, :options
 
-        def initialize(name, type, options = {})
+        def initialize(name, modifier = nil, **options)
           @name = name
-          @type = type
           @options = options
+          @modifier = modifier
+          @type = @options&.fetch(:type)
 
           check_options!
         end
@@ -32,13 +33,14 @@ module Fleck
         end
 
         def validate(value)
-          Validation.new(name, type, value, options)
+          Validation.new(name, type, value, modifier, **options)
         end
 
         private
 
         def check_options!
           check_type!
+          check_modifier!
           check_required!
           check_default!
           check_min_max!
@@ -53,6 +55,12 @@ module Fleck
 
           valid_type = AVAILABLE_TYPES.include?(@type)
           raise "Invalid param type: #{@type.inspect}" unless valid_type
+        end
+
+        def check_modifier!
+          return if @modifier.nil? || @modifier.is_a?(Proc)
+
+          raise "Invalid modifier, lambda or Proc expected, got #{@modifier.class}"
         end
 
         def check_required!

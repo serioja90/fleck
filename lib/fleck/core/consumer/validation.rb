@@ -6,9 +6,10 @@ module Fleck
       class Validation
         attr_reader :value, :errors
 
-        def initialize(name, type, value, options = {})
+        def initialize(name, type, value, modifier = nil, **options)
           @name = name
           @type         = type
+          @modifier     = modifier
           @value        = value || options[:default]
           @required     = (options[:required] == true)     # default: trues
           @allow_blank  = (options[:allow_blank] != false) # default: false
@@ -43,6 +44,8 @@ module Fleck
           when 'hash'    then validate_hash!
           when 'array'   then validate_array!
           end
+
+          apply_modifier!
         end
 
         def validate_string!
@@ -141,11 +144,17 @@ module Fleck
 
         def check_min_max!
           add_error(:min, "#{@name} should be greater than #{@min}") if @min && value < @min
-          add_error(:max, "#{@name} should be smaller than #{@max}") if @max && value < @max
+          add_error(:max, "#{@name} should be smaller than #{@max}") if @max && value > @max
         end
 
         def check_clamp!
           @value = @value.clamp(@clamp.first || -Float::INFINITY, @clamp.last || Float::INFINITY)
+        end
+
+        def apply_modifier!
+          return if @modifier.nil?
+
+          @value = @modifier.call(@value)
         end
 
         def numeric?
