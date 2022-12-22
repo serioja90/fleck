@@ -2,14 +2,17 @@
 
 ## develop ##
 
+### TAGS ###
+
+Below you can see the CHANGELOG of **Fleck** gem by version number.
+
+#### v2.2.0 (22 Dicember 2022) #####
+
 - **NEW** Implemented the feature which allows to add a modifier `lambda` to `param` decorator,
           so that the value of parameter can be modified before proceeding with action execution.
           Example: `param :name, ->(v) { v.to_s.strip.downcase }` will automatically convert the value of `name` parameter to string, will remove heading and trailing spaces and will transform to lower case.
 - **FIX** Correctly perform param `:max` validation.
-
-### TAGS ###
-
-Below you can see the CHANGELOG of **Fleck** gem by version number.
+- **FIX** Move `HashWithIndifferentAccess` class under `Fleck` module, in order to avoid conflict with `ActiveSupport::HashWithIndifferentAccess`.
 
 #### v2.1.3 (10 February 2022) #####
 
