@@ -3,7 +3,21 @@ module Fleck
   class Client
     include Fleck::Loggable
 
-    attr_reader :local_ip, :remote_ip
+    @instances = ThreadSafe::Array.new
+
+    def self.<<(new_instance)
+      @instances << new_instance
+    end
+
+    def self.remove_instance(instance)
+      @instances.delete(instance)
+    end
+
+    def self.terminate_all
+      @instances.map(&:terminate)
+    end
+
+    attr_reader :local_ip, :remote_ip, :terminated
 
     def initialize(connection, queue_name = "", exchange_type: :direct, exchange_name: "", multiple_responses: false, concurrency: 1)
       @connection         = connection
@@ -29,9 +43,11 @@ module Fleck
 
       logger.debug("Client initialized!")
 
-      at_exit do
-        terminate
-      end
+      Fleck::Client << self
+
+      # at_exit do
+      #   terminate
+      # end
     end
 
     def request(action: nil, version: nil, headers: {}, params: {}, async: @multiple_responses || false, timeout: @default_timeout, queue: @queue_name, rmq_options: {}, &block)
@@ -73,7 +89,8 @@ module Fleck
     def terminate
       @terminated = true
       logger.info "Unsubscribing from #{@reply_queue.name}"
-      @subscriptions.map(&:cancel) # stop receiving new messages
+      # @subscriptions.map(&:cancel) # stop receiving new messages
+      @channel&.close unless @channel&.closed?
       logger.info "Canceling pending requests"
       # cancel pending requests
       while item = @requests.shift do
@@ -83,6 +100,8 @@ module Fleck
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
         end
       end
+
+      Fleck::Client.remove_instance(self)
     end
 
 
@@ -120,5 +139,9 @@ module Fleck
   end
 end
 
-require "fleck/client/request"
-require "fleck/client/response"
+at_exit do
+  Fleck::Client.terminate_all
+end
+
+require 'fleck/client/request'
+require 'fleck/client/response'
