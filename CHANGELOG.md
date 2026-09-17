@@ -6,6 +6,11 @@
 
 Below you can see the CHANGELOG of **Fleck** gem by version number.
 
+#### v2.2.4 (17 September 2026) #####
+
+- **FIX** Return a bad-request response for malformed consumer request JSON with native Oj and
+          `Oj.mimic_JSON` parser errors.
+
 #### v2.2.0 (22 Dicember 2022) #####
 
 - **NEW** Implemented the feature which allows to add a modifier `lambda` to `param` decorator,
