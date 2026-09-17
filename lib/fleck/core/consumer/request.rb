@@ -74,7 +74,16 @@ module Fleck
         protected
 
         def parse_request!
-          @data = Oj.load(@payload, mode: :compat).to_hash_with_indifferent_access.filtered!
+          begin
+            @data = Oj.load(@payload, mode: :compat)
+          rescue StandardError => e
+            raise unless json_parse_error?(e)
+
+            fail_request!(400, 'Bad Request', e)
+            return
+          end
+
+          @data = @data.to_hash_with_indifferent_access.filtered!
           @headers.merge!(@data['headers'] || {}).filtered!
 
           logger.debug "Request (exchange: #{@exchange.inspect}, queue: #{@queue.inspect}, " \
@@ -85,13 +94,18 @@ module Fleck
           @version             = @headers['version']
           @ip                  = @headers['ip']
           @params              = @data['params'] || {}
-        rescue Oj::ParseError => e
-          log_error(e)
-          response.render_error(400, 'Bad request', e.inspect)
-          @failed = true
         rescue StandardError => e
-          log_error(e)
-          response.render_error(500, 'Internal Server Error', e.inspect)
+          fail_request!(500, 'Internal Server Error', e)
+        end
+
+        def json_parse_error?(error)
+          error.is_a?(Oj::ParseError) || error.is_a?(EncodingError) ||
+            (defined?(JSON::ParserError) && error.is_a?(JSON::ParserError))
+        end
+
+        def fail_request!(status, message, error)
+          log_error(error)
+          response.render_error(status, [message, error.inspect])
           @failed = true
         end
       end
