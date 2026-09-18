@@ -124,7 +124,8 @@ module Fleck
         end
       rescue StandardError => e
         log_error(e)
-        internal_server_error! error: e.inspect, interrupt: false
+        response.reset!
+        internal_server_error! interrupt: false
       ensure
         send_response!
         log_request

@@ -6,6 +6,10 @@
 
 Below you can see the CHANGELOG of **Fleck** gem by version number.
 
+#### v2.2.5 (18 September 2026) #####
+
+- **FIX** Keep unexpected exception details in server logs without exposing them in automatic 500 responses.
+
 #### v2.2.4 (17 September 2026) #####
 
 - **FIX** Return a bad-request response for malformed consumer request JSON with native Oj and

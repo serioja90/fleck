@@ -75,7 +75,8 @@ RSpec.describe Fleck::Core::Consumer::Request do
     it 'returns a failed internal-server-error response' do
       expect(request).to be_failed
       expect(request.response.status).to eq(500)
-      expect(request.response.errors.first).to eq('Internal Server Error')
+      expect(request.response.errors).to eq(['Internal Server Error'])
+      expect(request.response.body).to be_nil
     end
   end
 end
