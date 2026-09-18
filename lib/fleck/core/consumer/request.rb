@@ -105,7 +105,9 @@ module Fleck
 
         def fail_request!(status, message, error)
           log_error(error)
-          response.render_error(status, [message, error.inspect])
+          errors = [message]
+          errors << error.inspect if status < 500
+          response.render_error(status, errors)
           @failed = true
         end
       end

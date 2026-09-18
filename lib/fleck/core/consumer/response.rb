@@ -1,4 +1,3 @@
-
 module Fleck
   module Core
     class Consumer
@@ -30,6 +29,14 @@ module Fleck
           @deprecated
         end
 
+        def reset!
+          @status     = 200
+          @errors     = []
+          @headers    = {}
+          @body       = nil
+          @deprecated = false
+        end
+
         def not_found(msg = nil)
           @status = 404
           @errors << 'Resource Not Found'
@@ -51,25 +58,25 @@ module Fleck
 
         def to_json(filter: false)
           data = {
-            "status"     => @status,
-            "errors"     => @errors,
-            "headers"    => @headers,
-            "body"       => @body,
-            "deprecated" => @deprecated
+            'status' => @status,
+            'errors' => @errors,
+            'headers' => @headers,
+            'body' => @body,
+            'deprecated' => @deprecated
           }
           data.filter! if filter
 
-          return Oj.dump(data, mode: :compat)
-        rescue => e
+          Oj.dump(data, mode: :compat)
+        rescue StandardError => e
           logger.error e.inspect + "\n" + e.backtrace.join("\n")
-          return Oj.dump({
-            "status" => 500,
-            "errors" => ['Internal Server Error', 'Failed to dump the response to JSON']
-          }, mode: :compat)
+          Oj.dump({
+                    'status' => 500,
+                    'errors' => ['Internal Server Error', 'Failed to dump the response to JSON']
+                  }, mode: :compat)
         end
 
         def to_s
-          return "#<#{self.class} #{self.to_json(filter: true)}>"
+          "#<#{self.class} #{to_json(filter: true)}>"
         end
       end
     end
