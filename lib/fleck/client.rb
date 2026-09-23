@@ -36,7 +36,9 @@ module Fleck
       @exchange    = Bunny::Exchange.new(@channel, :direct, 'fleck')
       @publisher   = Bunny::Exchange.new(@connection.create_channel, exchange_type, exchange_name)
       @reply_queue = @channel.queue("", exclusive: true, auto_delete: true)
-      @reply_queue.bind(@exchange, routing_key: @reply_queue.name)
+      # Bunny recovers server-named queues with new names but their original binding keys.
+      @reply_routing_key = @reply_queue.name
+      @reply_queue.bind(@exchange, routing_key: @reply_routing_key)
 
       handle_returned_messages!
       @concurrency.times { handle_responses! }
@@ -57,7 +59,7 @@ module Fleck
       end
 
       request = Fleck::Client::Request.new(
-        self, queue, @reply_queue.name,
+        self, queue, @reply_routing_key,
         action:             action,
         version:            version,
         headers:            headers,
